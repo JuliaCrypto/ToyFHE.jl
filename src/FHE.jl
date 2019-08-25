@@ -2,9 +2,13 @@ module FHE
 
 export encrypt, decrypt, keygen
 
-abstract SHEShemeParams end
+abstract type SHEShemeParams end
 
 using Random
+
+# For now
+using BitIntegers
+Base.widen(::Type{Int128}) = Int256
 
 # TODO: CSPRNG here
 keygen(params::SHEShemeParams) = keygen(Random.GLOBAL_RNG, params)
@@ -16,8 +20,9 @@ include("Karney.jl")
 include("NTT.jl")
 using .NTT
 include("utils.jl")
-include("bgv.jl")
 include("cryptparams.jl")
+include("bgv.jl")
+include("bfv.jl")
 
 
 end

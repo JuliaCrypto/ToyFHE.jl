@@ -11,7 +11,8 @@ import Base: *, +, -
 
 import GaloisFields: PrimeField
 
-export LWERing, RingSampler, nntt, inntt, FixedDegreePoly
+export LWERing, RingSampler, nntt, inntt, FixedDegreePoly,
+    LWERingElement, LWERingDualElement
 
 @auto_hash_equals struct FixedDegreePoly{N, T}
     p::OffsetVector{T}
@@ -20,6 +21,8 @@ function FixedDegreePoly(p::OffsetVector)
     @assert first(axes(p)[1]) == 0
     FixedDegreePoly{length(p), eltype(p)}(p)
 end
+Base.zero(::Type{FixedDegreePoly{N, T}}) where {N, T} =
+    FixedDegreePoly(OffsetArray(zeros(T, N),0:N-1))
 Polynomials.degree(p::FixedDegreePoly{N}) where {N} = N
 
 """
@@ -41,6 +44,8 @@ end
 LWERingElement{ℛ,Field,N}(coeffs::AbstractVector) where {ℛ,Field <: PrimeField,  N} = LWERingElement{ℛ,Field,N}(FixedDegreePoly(coeffs))
 coeffs(e::LWERingElement) = e.p.p
 LWERingElement(ℛ::LWERing) = LWERingElement{ℛ, eltype(ℛ), degree(ℛ)}
+Base.zero(::Type{LWERingElement{ℛ,Field,N}}) where {ℛ,Field,N} =
+    LWERingElement{ℛ,Field,N}(zero(FixedDegreePoly{N, Field}))
 
 """
 Represents an ntt-dual element of 𝔽q[x]/(xⁿ+1).
@@ -48,6 +53,8 @@ Represents an ntt-dual element of 𝔽q[x]/(xⁿ+1).
 @auto_hash_equals struct LWERingDualElement{ ℛ #= ::LWERing{Field} =#, Field <: PrimeField}
     data::OffsetVector{Field}
 end
+Base.zero(::Type{LWERingDualElement{ℛ,Field}}) where {ℛ,Field} =
+    LWERingDualElement{ℛ,Field}(OffsetArray(zeros(Field, degree(ℛ)),0:degree(params.ℛ)-1))
 coeffs(e::LWERingDualElement) = e.data
 LWERingDualElement(ℛ::LWERing) = LWERingDualElement{ℛ, eltype(ℛ)}
 
@@ -70,6 +77,7 @@ for f in (:+, :-)
                 b::$T{ℛ}) where {ℛ}
             $T(ℛ)(map($f, coeffs(a), coeffs(b)))
         end
+        @eval $f(a::$T{ℛ}) where {ℛ} = $T(ℛ)(map($f, coeffs(a)))
     end
 end
 

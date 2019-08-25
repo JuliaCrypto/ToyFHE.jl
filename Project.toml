@@ -5,8 +5,10 @@ version = "0.1.0"
 
 [deps]
 AutoHashEquals = "15f4f7f2-30c1-5605-9d31-71845cf9641f"
+BitIntegers = "484ca59e-adf8-11e8-3fc9-31149c4372f8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GaloisFields = "8d0d7f98-d412-5cd4-8397-071c807280aa"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"

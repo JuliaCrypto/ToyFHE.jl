@@ -7,7 +7,7 @@ module BGV
     using ..NTT
 
     import GaloisFields: PrimeField
-    import ..Utils: @fields_as_locals
+    import ..Utils: @fields_as_locals, fqmod
     export BGVParams
 
     import FHE: keygen, encrypt, decrypt, SHEShemeParams
@@ -85,25 +85,14 @@ module BGV
     encrypt(rng::AbstractRNG, kp::KeyPair, plaintext) = encrypt(rng, kp.pub, plaintext)
     encrypt(key, plaintext) = encrypt(Random.GLOBAL_RNG, key, plaintext)
 
-    # TODO: This isn't fully generic
-    function fqmod(e::PrimeField, modulus::Integer)
-        halfq = GaloisFields.char(e)/2
-        if e.n > halfq
-            mod(e.n - GaloisFields.char(e), modulus)
-        else
-            mod(e.n, modulus)
-        end
-    end
-
-    function decrypt(rng::AbstractRNG, key::PrivKey, c::CipherText)
+    function decrypt(key::PrivKey, c::CipherText)
         @fields_as_locals key::PrivKey
         @fields_as_locals params::BGVParams
 
         cc = inntt(c[1] - s*c[2])
         FixedDegreePoly(map(x->UInt8(fqmod(x, p)), cc.p.p))
     end
-    decrypt(rng::AbstractRNG, kp::KeyPair, plaintext) = decrypt(rng, kp.priv, plaintext)
-    decrypt(key, plaintext) = decrypt(Random.GLOBAL_RNG, key, plaintext)
+    decrypt(kp::KeyPair, plaintext) = decrypt(kp.priv, plaintext)
 
     struct MultCipherText{T}
         c::NTuple{3,T}
