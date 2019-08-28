@@ -181,7 +181,7 @@ module BFV
         end
     end
     function multround(e::LWERingElement{ℛ}, a::Integer, b::Integer) where {ℛ}
-        LWERingElement(ℛ)(FixedDegreePoly(map(e.p.p) do x
+        LWERingElement(RingCoeffs{ℛ}(map(coeffs(e)) do x
             multround(x, a, b)
         end))
     end
@@ -217,13 +217,14 @@ module BFV
     end
 
     function switch(ℛ::LWERing, e::LWERingElement)
-        LWERingElement(ℛ)(FixedDegreePoly(map(e.p.p) do x
+        LWERingElement(RingCoeffs{ℛ}(map(coeffs(e)) do x
             switch(eltype(ℛ), x)
         end))
     end
 
     function *(c1::CipherText{T}, c2::CipherText{T}) where {T}
-        @fields_as_locals c1.params::BFVParams
+        params = c1.params
+        @fields_as_locals params::BFVParams
 
         modswitch(c) = nntt(switch(ℛbig, inntt(c)))
         c1 = map(modswitch, c1.cs)
@@ -238,7 +239,7 @@ module BFV
             switch(ℛ, multround(inntt(e), p, char(eltype(ℛ))))
         end
 
-        CipherText(c1.params, (c...,))
+        CipherText(params, (c...,))
     end
 
     maybe_nntt(x::LWERingElement) = nntt(x)
