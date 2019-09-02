@@ -38,6 +38,10 @@ Represents the ring 𝔽q[x]/(xⁿ+1).
 struct LWERing{Field <: PrimeField, N}
     # 2N'th primitive root of unity in Field
     ψ::Field
+    function LWERing{Field, N}(ψ::Field) where {Field, N}
+        @assert ψ^2N == 1
+        new{Field, N}(ψ)
+    end
 end
 Polynomials.degree(ℛ::LWERing{F,N}) where {F,N} = N
 Base.eltype(ℛ::LWERing{F,N}) where {F,N} = F
@@ -174,29 +178,37 @@ around required to achieve x^n = -1.
 
 [1] https://eprint.iacr.org/2015/382.pdf
 """
-function nntt(p::LWERingElement{ℛ})::LWERingDualElement{ℛ} where {ℛ}
+function nntt(c::RingCoeffs{ℛ})::RingCoeffs{ℛ} where {ℛ}
     ψ = ℛ.ψ
     ω = ψ^2
-    powmulp = RingCoeffs{ℛ}([x*ψ^i for (i,x) in pairs(p.p.p.coeffs)])
+    powmulp = RingCoeffs{ℛ}([x*ψ^i for (i,x) in pairs(c.coeffs)])
     ωpow(T, n, i) = (@assert T == eltype(ℛ); ω^(i*div(degree(ℛ),n)))
     c̃ = RingCoeffs{ℛ}(OffsetArray(Vector{eltype(ℛ)}(undef, degree(ℛ)), 0:degree(ℛ)-1))
     mul!(c̃, CTPlan(eltype(ℛ), true, degree(ℛ); ωpow=ωpow), powmulp)
-    LWERingDualElement(c̃)
+    c̃
+end
+
+function nntt(p::LWERingElement{ℛ})::LWERingDualElement{ℛ} where {ℛ}
+    LWERingDualElement(nntt(p.p.p))
 end
 
 """
 Computes the inverse of nntt(p).
 """
-function inntt(p̃::LWERingDualElement{ℛ})::LWERingElement{ℛ} where {ℛ}
+function inntt(c̃::RingCoeffs{ℛ})::RingCoeffs{ℛ} where {ℛ}
     ψ = ℛ.ψ
     ω = ψ^2
     ψ⁻¹ = inv(ψ)
     ω⁻¹ = ψ⁻¹^2
     ωpow(T, n, i) = (@assert T == eltype(ℛ); ω^(i*div(degree(ℛ),n)))
     c = RingCoeffs{ℛ}(OffsetArray(Vector{eltype(ℛ)}(undef, degree(ℛ)), 0:degree(ℛ)-1))
-    mul!(c, CTPlan(eltype(ℛ), false, degree(ℛ); ωpow=ωpow), p̃.data)
+    mul!(c, CTPlan(eltype(ℛ), false, degree(ℛ); ωpow=ωpow), c̃)
     n⁻¹ = inv(eltype(ℛ)(degree(ℛ)))
-    LWERingElement(RingCoeffs{ℛ}([x * n⁻¹ * ψ⁻¹^i for (i, x) in pairs(c.coeffs)]))
+    RingCoeffs{ℛ}([x * n⁻¹ * ψ⁻¹^i for (i, x) in pairs(c.coeffs)])
+end
+
+function inntt(p̃::LWERingDualElement{ℛ})::LWERingElement{ℛ} where {ℛ}
+    LWERingElement(inntt(p̃.data))
 end
 
 struct RingSampler{Ring} <: Random.Sampler{Ring}

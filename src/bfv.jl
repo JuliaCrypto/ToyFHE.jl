@@ -7,6 +7,7 @@ module BFV
     using ..NTT
     using ..CryptParameters
     using Primes
+    using BitIntegers
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod
@@ -83,7 +84,9 @@ module BFV
         end
 
         qPrime = nextprime(Int128(2)^(ceil(Int, log2(q))+1) + 1, 1; interval=2n)
-        qPrimeLarge = nextprime(Int128(2)^(2*ceil(Int, log2(q)) + ceil(Int, log2(p)) + 3) + 1, 1; interval=2n)
+        largebits = 2*ceil(Int, log2(q)) + ceil(Int, log2(p)) + 3
+        Tlarge = largebits > 128 ? Int256 : Int128
+        qPrimeLarge = Tlarge(nextprime(big(2)^largebits + 1, 1; interval=2n))
 
         Δ = div(qPrime, p)
 
@@ -258,7 +261,7 @@ module BFV
         end
 
         b = inntt(b)
-        FixedDegreePoly(map(x->UInt8(fqmod(divround(x, Δ), p)), b.p.p))
+        FixedDegreePoly(map(x->GaloisField(65537)(fqmod(divround(x, Δ), p)), b.p.p))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
 end
