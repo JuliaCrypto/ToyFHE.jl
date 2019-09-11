@@ -8,13 +8,15 @@ module BFV
     using ..CryptParameters
     using Primes
     using BitIntegers
+    using Nemo
+    using AbstractAlgebra
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod
-    import ..FHE: SHEShemeParams
+    import ..FHE: SHEShemeParams, RingSampler
     export BFVParams
 
-    import FHE: keygen, encrypt, decrypt
+    import FHE: keygen, encrypt, decrypt, coefftype
     import Base: +, *, -
 
     struct BFVParams <: SHEShemeParams
@@ -26,6 +28,14 @@ module BFV
         p
         σ
         Δ
+    end
+
+    function plaintext_space(params::BFVParams)
+        if isa(params.ℛ, ResRing)
+            PolynomialRing(ResidueRing(Nemo.ZZ, params.p), "x")[1]
+        else
+            error("Only Nemo supported here")
+        end
     end
 
     # Matches parameter generation in PALISADE
@@ -119,6 +129,7 @@ module BFV
         priv
         pub
     end
+    Base.show(io::IO, kp::KeyPair) = print(io, "BFV key pair")
 
     struct CipherText{T, N}
         params::BFVParams
@@ -127,16 +138,21 @@ module BFV
     Base.length(c::CipherText) = length(c.cs)
     Base.getindex(c::CipherText, i::Integer) = c.cs[i]
 
+    nntt_hint(r) = r
+    nntt_hint(r::LWERingElement) = nntt(r)
+    inntt_hint(r) = r
+    inntt_hint(r::LWERingDualElement) = inntt(r)
+
     function keygen(rng, params::BFVParams)
         @fields_as_locals params::BFVParams
 
-        dug = RingSampler{ℛ}(DiscreteUniform(eltype(ℛ)))
-        dgg = RingSampler{ℛ}(DiscreteNormal{eltype(ℛ)}(0, σ))
+        dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
+        dgg = RingSampler(ℛ, DiscreteNormal(coefftype(ℛ), 0, σ))
 
-        a = nntt(rand(rng, dug))
-        s = nntt(rand(rng, dgg))
+        a = nntt_hint(rand(rng, dug))
+        s = nntt_hint(rand(rng, dgg))
 
-        e = nntt(rand(rng, dgg))
+        e = nntt_hint(rand(rng, dgg))
 
         KeyPair(
             PrivKey(params, s),
@@ -147,11 +163,11 @@ module BFV
         @fields_as_locals key::PubKey
         @fields_as_locals params::BFVParams
 
-        dgg = RingSampler{ℛ}(DiscreteNormal{eltype(ℛ)}(0, σ))
+        dgg = RingSampler(ℛ, DiscreteNormal(coefftype(ℛ), 0, σ))
 
-        u = nntt(rand(rng, dgg))
-        e₁ = nntt(rand(rng, dgg))
-        e₂ = nntt(rand(rng, dgg))
+        u = nntt_hint(rand(rng, dgg))
+        e₁ = nntt_hint(rand(rng, dgg))
+        e₂ = nntt_hint(rand(rng, dgg))
 
         c₁ = b*u + e₁ + Δ * plaintext
         c₂ = a*u + e₂
@@ -173,95 +189,114 @@ module BFV
     function multround(e::Integer, a::Integer, b::Integer)
         div(e * a, b, RoundNearestTiesAway)
     end
+    multround(e::fmpz, a::Integer, b::Integer) = multround(BigInt(e), a, b)
+    multround(e::fmpz, a::Integer, b::fmpz) = multround(BigInt(e), a, BigInt(b))
 
-    function multround(e::PrimeField, a::Integer, b::Integer)
-        q = GaloisFields.char(e)
+    function multround(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, a::Integer, b)
+        q = modulus(e)
         halfq = q >> 1
-        if e.n > halfq
-            return typeof(e)(q - multround(q - e.n, a, b))
+        en = lift(e)
+        if en > halfq
+            return oftype(e, q - multround(q - en, a, b))
         else
-            return typeof(e)(multround(e.n, a, b))
+            return oftype(e, multround(en, a, b))
         end
     end
-    function multround(e::LWERingElement{ℛ}, a::Integer, b::Integer) where {ℛ}
-        LWERingElement(RingCoeffs{ℛ}(map(coeffs(e)) do x
+    function multround(e, a::Integer, b)
+        oftype(e, map(NTT.coeffs(e)) do x
             multround(x, a, b)
-        end))
+        end)
+    end
+
+    Nemo.modulus(e::PrimeField) = GaloisFields.char(e)
+    Nemo.lift(e::PrimeField) = e.n
+    Nemo.lift(e::Nemo.nmod) = lift(Nemo.ZZ, e)
+
+    function fqmod(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, nq::Integer)
+        q = modulus(e)
+        halfq = q >> 1
+        e = lift(e)
+        if e > halfq
+            mod(e - q, nq)
+        else
+            mod(e, nq)
+        end
     end
 
     divround(e::Integer, q::Integer) = div(e, q, RoundNearestTiesAway)
-    function divround(e::PrimeField, d::Integer)
-        q = GaloisFields.char(e)
+    divround(e::fmpz, q::Integer) = divround(BigInt(e), q)
+    function divround(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, d::Integer)
+        q = modulus(e)
         halfq = q >> 1
-        if e.n > halfq
-            return typeof(e)(q - divround(q - e.n, d))
+        en = lift(e)
+        if en > halfq
+            return oftype(e, q - divround(q - en, d))
         else
-            return typeof(e)(divround(e.n, d))
+            return oftype(e, divround(en, d))
         end
     end
 
-    function switch(::Type{T}, e::S) where {T<:PrimeField, S<:PrimeField}
-        q = GaloisFields.char(e)
+    function switchel(T, e)
+        q = modulus(e)
         halfq = q >> 1
-        diff = abs(char(T) - q)
-        if (q < char(T))
-            if e.n > halfq
-                return T(e.n + diff)
+        diff = modulus(T) > q ? modulus(T) - q : q - modulus(T)
+        en = lift(e)
+        if (q < modulus(T))
+            if en > halfq
+                return T(en + diff)
             else
-                return T(e.n)
+                return T(en)
             end
         else
-            if e.n > halfq
-                return T(e.n - diff)
+            if en > halfq
+                return T(en - diff)
             else
-                return T(e.n)
+                return T(en)
             end
         end
     end
 
-    function switch(ℛ::LWERing, e::LWERingElement)
-        LWERingElement(RingCoeffs{ℛ}(map(coeffs(e)) do x
-            switch(eltype(ℛ), x)
-        end))
+    function switch(ℛ, e)
+        ℛ(map(NTT.coeffs(e)) do x
+            switchel(coefftype(ℛ), x)
+        end)
     end
 
     function *(c1::CipherText{T}, c2::CipherText{T}) where {T}
         params = c1.params
         @fields_as_locals params::BFVParams
 
-        modswitch(c) = nntt(switch(ℛbig, inntt(c)))
+        modswitch(c) = nntt_hint(switch(ℛbig, inntt_hint(c)))
         c1 = map(modswitch, c1.cs)
         c2 = map(modswitch, c2.cs)
 
-        c = [zero(typeof(c1[1])) for i = 1:(length(c1) + length(c2) - 1)]
+        c = [zero(c1[1]) for i = 1:(length(c1) + length(c2) - 1)]
         for i = 1:length(c1), j = 1:length(c2)
             c[i+j-1] += c1[i] * c2[j]
         end
 
         c = map(c) do e
-            switch(ℛ, multround(inntt(e), p, char(eltype(ℛ))))
+            switch(ℛ, multround(inntt_hint(e), p, modulus(coefftype(ℛ))))
         end
 
         CipherText(params, (c...,))
     end
 
-    maybe_nntt(x::LWERingElement) = nntt(x)
-    maybe_nntt(x::LWERingDualElement) = x
-
     function decrypt(key::PrivKey, c::CipherText)
         @fields_as_locals key::PrivKey
         @fields_as_locals params::BFVParams
 
-        b = maybe_nntt(c[1])
+        b = nntt_hint(c[1])
         spow = s
 
         for i = 2:length(c)
-            b += spow*maybe_nntt(c[i])
+            b += spow*nntt_hint(c[i])
             spow *= s
         end
 
-        b = inntt(b)
-        FixedDegreePoly(map(x->GaloisField(65537)(fqmod(divround(x, Δ), p)), b.p.p))
+        b = inntt_hint(b)
+        ℛplain = plaintext_space(params)
+        ℛplain(map(x->coefftype(ℛplain)(fqmod(divround(x, Δ), modulus(ℛplain))), NTT.coeffs(b)))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
 end

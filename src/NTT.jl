@@ -43,6 +43,10 @@ struct LWERing{Field <: PrimeField, N}
         new{Field, N}(ψ)
     end
 end
+function LWERing{Field, N}(ψ::Integer) where {Field, N}
+    @assert ψ < char(Field)
+    LWERing{Field, N}(convert(Field, ψ))
+end
 Polynomials.degree(ℛ::LWERing{F,N}) where {F,N} = N
 Base.eltype(ℛ::LWERing{F,N}) where {F,N} = F
 
@@ -209,17 +213,6 @@ end
 
 function inntt(p̃::LWERingDualElement{ℛ})::LWERingElement{ℛ} where {ℛ}
     LWERingElement(inntt(p̃.data))
-end
-
-struct RingSampler{Ring} <: Random.Sampler{Ring}
-    coeff_distribution::Any #DiscreteUnivariateDistribution
-end
-
-function Random.rand(rng::Random.AbstractRNG, r::RingSampler{ℛ}) where {ℛ}
-    coeffs = RingCoeffs{ℛ}(OffsetArray(
-        [rand(rng, r.coeff_distribution) for _ in 1:degree(ℛ)],
-        0:degree(ℛ)-1))
-    LWERingElement(coeffs)
 end
 
 end

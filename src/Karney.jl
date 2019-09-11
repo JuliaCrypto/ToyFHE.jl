@@ -14,18 +14,19 @@ module Karney
     struct HUntilFailure; end
     Random.rand(rng::AbstractRNG, ::HUntilFailure) = (n = 0; while rand(rng, BernoulliExpHalf()); n += 1; end; n)
 
-    struct DiscreteNormal{S, T<:Real} <: DiscreteUnivariateDistribution
-        μ::T
-        σ::T
+    struct DiscreteNormal{S, R<:Real} <: DiscreteUnivariateDistribution
+        T::S
+        μ::R
+        σ::R
     end
     const DiscreteGaussian = DiscreteNormal
 
-    function DiscreteNormal{S}(a::Real, b::Real) where {S}
+    function DiscreteNormal(T::S, a::Real, b::Real) where {S}
         c = promote(a,b)
-        DiscreteNormal{S,typeof(c[1])}(c...)
+        DiscreteNormal{S,typeof(c[1])}(T, c...)
     end
 
-    function _rand_karney(rng, d::DiscreteNormal{S}) where S
+    function _rand_karney(rng, d::DiscreteNormal)
         while true
             # Step D1
             k = rand(rng, HUntilFailure())
@@ -67,7 +68,7 @@ module Karney
             i::Int64 = i₀ + j
             positive || (i = -i)
 
-            return S(i)
+            return d.T(i)
         end
     end
 

@@ -48,10 +48,6 @@ module BGV
     CipherText(c0::T, c1::T) where {T} = CipherText((c0, c1))
     Base.getindex(c::CipherText, i::Integer) = c.c[i]
 
-    # HACK - DiscreteUniform is the default for types, but it'd be nice to
-    # allow this.
-    Distributions.DiscreteUniform(T::Type) = T
-
     function keygen(rng, params::BGVParams)
         @fields_as_locals params::BGVParams
 

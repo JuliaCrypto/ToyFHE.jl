@@ -3,6 +3,7 @@ module Utils
 using Base.Meta
 using GaloisFields
 using GaloisFields: PrimeField
+using Distributions
 
 macro fields_as_locals(a)
     @assert isexpr(a, :(::))
@@ -17,13 +18,10 @@ macro fields_as_locals(a)
 end
 
 # TODO: This isn't fully generic
-function fqmod(e::PrimeField, modulus::Integer)
-    halfq = GaloisFields.char(e)/2
-    if e.n > halfq
-        mod(e.n - GaloisFields.char(e), modulus)
-    else
-        mod(e.n, modulus)
-    end
-end
+
+
+# HACK - DiscreteUniform is the default for types, but it'd be nice to
+# allow this.
+Distributions.DiscreteUniform(T::Type) = T
 
 end
