@@ -1,6 +1,6 @@
-> I frequently hear music in the heart of noise. - George Gershwin
-
 # ToyFHE.jl - A toy implementation of FHE algorithms
+
+> I frequently hear music in the heart of noise. - George Gershwin
 
 **WARNING**: The code in this repository is in an extremely alpha quality. You
 may want to check back in a little bit once things have been cleaned up.
