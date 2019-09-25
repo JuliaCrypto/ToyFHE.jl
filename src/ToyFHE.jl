@@ -24,6 +24,7 @@ include("cryptparams.jl")
 include("bgv.jl")
 include("bfv.jl")
 include("nemo.jl")
+include("div_hacks.jl")
 
 end
 
