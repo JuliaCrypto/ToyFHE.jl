@@ -2,9 +2,9 @@
 
 [[AbstractAlgebra]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "097bf123e45107cf3555d6b000c6a3c2e4104195"
+git-tree-sha1 = "e1f0be8eeee8f842b0fcd9df5e6545c2d81b1d17"
 uuid = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
-version = "0.5.3"
+version = "0.6.0"
 
 [[AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -40,9 +40,11 @@ version = "0.5.6"
 
 [[BitIntegers]]
 deps = ["Random"]
-path = "/Users/kfischer/.julia/dev/BitIntegers"
-uuid = "484ca59e-adf8-11e8-3fc9-31149c4372f8"
-version = "0.1.0"
+git-tree-sha1 = "9ff66aa4a89ea7ed2040a627ecaf063e39f25937"
+repo-rev = "master"
+repo-url = "https://github.com/rfourquet/BitIntegers.jl.git"
+uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
+version = "0.2.0"
 
 [[CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
@@ -81,19 +83,25 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-path = "/Users/kfischer/.julia/dev/Distributions"
+git-tree-sha1 = "953129ec145d6f91e62c0347e73cc993f129352e"
+repo-rev = "kf/discretenormal"
+repo-url = "https://github.com/Keno/Distributions.jl"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.21.1"
 
 [[FourierTransforms]]
 deps = ["AbstractFFTs", "LinearAlgebra", "Primes", "Reexport"]
-path = "/Users/kfischer/.julia/dev/FourierTransforms"
+git-tree-sha1 = "bed6810d0ed416492687146587557f9f966dc71c"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaComputing/FourierTransforms.jl"
 uuid = "65ccaadd-67db-5e3c-9b87-b7ebc17758a8"
 version = "0.0.0"
 
 [[GaloisFields]]
-deps = ["HTTP", "JSON", "LinearAlgebra", "Polynomials", "Primes", "Random", "Serialization", "Test"]
-path = "/Users/kfischer/.julia/dev/GaloisFields"
+deps = ["HTTP", "JSON", "LinearAlgebra", "Polynomials", "Primes", "Random", "Requires", "Serialization"]
+git-tree-sha1 = "7c9995cb78cb3bf2fd7ba967e48093a1a701f11e"
+repo-rev = "kf/bigbitint"
+repo-url = "https://github.com/Keno/GaloisFields.jl"
 uuid = "8d0d7f98-d412-5cd4-8397-071c807280aa"
 version = "0.4.0"
 
@@ -105,7 +113,9 @@ version = "0.8.6"
 
 [[Hecke]]
 deps = ["AbstractAlgebra", "Distributed", "InteractiveUtils", "Libdl", "LinearAlgebra", "Markdown", "Nemo", "Pkg", "Printf", "Profile", "Random", "Requires", "Serialization", "SparseArrays", "Test"]
-path = "/Users/kfischer/.julia/dev/Hecke"
+git-tree-sha1 = "a192aafceae8f2e9411fb61a0cb375394f2a3e5f"
+repo-rev = "kf/discard"
+repo-url = "https://github.com/Keno/Hecke.jl.git"
 uuid = "3e1990a7-5d81-5526-99ce-9ba3ff248f21"
 version = "0.6.5"
 
@@ -209,7 +219,9 @@ uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 version = "0.5.2"
 
 [[Primes]]
-path = "/Users/kfischer/.julia/dev/Primes"
+git-tree-sha1 = "08771d3648544f1a53a96d9082b7aa021b268765"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaMath/Primes.jl.git"
 uuid = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
 version = "0.4.0+"
 

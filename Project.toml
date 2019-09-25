@@ -6,7 +6,7 @@ version = "0.1.0"
 [deps]
 AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
 AutoHashEquals = "15f4f7f2-30c1-5605-9d31-71845cf9641f"
-BitIntegers = "484ca59e-adf8-11e8-3fc9-31149c4372f8"
+BitIntegers = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 FourierTransforms = "65ccaadd-67db-5e3c-9b87-b7ebc17758a8"
 GaloisFields = "8d0d7f98-d412-5cd4-8397-071c807280aa"
