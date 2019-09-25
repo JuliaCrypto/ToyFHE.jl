@@ -13,10 +13,10 @@ module BGV
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod
-    import ..FHE: SHEShemeParams, RingSampler, modulus, degree
+    import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree
     export BGVParams
 
-    import FHE: keygen, encrypt, decrypt, coefftype
+    import ToyFHE: keygen, encrypt, decrypt, coefftype
     import Base: +, *, -
 
 

@@ -1,4 +1,4 @@
-# FHE.jl - A toy implementation of FHE algorithms
+# ToyFHE.jl - A toy implementation of FHE algorithms
 
 This repository containts (the beginnings of) and FHE implementation
 I wrote to understand how FHE works. You probably don't want to use this.

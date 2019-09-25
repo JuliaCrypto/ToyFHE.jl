@@ -1,7 +1,7 @@
 using Nemo
 using Hecke
-using FHE
-using FHE.BFV
+using ToyFHE
+using ToyFHE.BFV
 using Primes
 
 const n_plaintext_slots = 3
@@ -95,7 +95,7 @@ params = BFVParams(
     div(q, plaintext_modulus)
 )
 
-kp = FHE.BFV.keygen(params)
+kp = ToyFHE.BFV.keygen(params)
 
 ppoly = encode(factors, ℤpx, map(ℤplainx, [1, 2, 3, 4, 5, 6]))
 epoly = params.ℛ(lift(PolynomialRing(ℤ,"x")[1], ppoly))

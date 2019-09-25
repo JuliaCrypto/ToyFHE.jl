@@ -1,4 +1,4 @@
-module FHE
+module ToyFHE
 
 export encrypt, decrypt, keygen
 

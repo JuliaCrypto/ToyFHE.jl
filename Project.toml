@@ -1,4 +1,4 @@
-name = "FHE"
+name = "ToyFHE"
 uuid = "ed6b25c6-c39d-11e9-27fc-075f0335bf0b"
 authors = ["Keno Fischer <keno@juliacomputing.com>"]
 version = "0.1.0"
