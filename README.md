@@ -2,6 +2,10 @@
 
 > I frequently hear music in the heart of noise. - George Gershwin
 
+
+[![Build Status](https://travis-ci.org/JuliaComputing/ToyFHE.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/ToyFHE.jl)
+[![codecov](https://codecov.io/gh/JuliaComputing/ToyFHE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/ToyFHE.jl)
+
 **WARNING**: The code in this repository is in an extremely alpha quality. You
 may want to check back in a little bit once things have been cleaned up.
 
