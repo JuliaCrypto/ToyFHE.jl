@@ -181,7 +181,9 @@ version = "0.1.0"
 
 [[Nemo]]
 deps = ["AbstractAlgebra", "BinaryProvider", "InteractiveUtils", "Libdl", "LinearAlgebra", "Markdown", "Random", "Test"]
-path = "/Users/kfischer/.julia/dev/Nemo"
+git-tree-sha1 = "a55627cddf52399c61615395679d1d6d6e4cbbcd"
+repo-rev = "kf/discard"
+repo-url = "https://github.com/Keno/Nemo.jl"
 uuid = "2edaba10-b0f1-5616-af89-8c11ac63239a"
 version = "0.14.3"
 
