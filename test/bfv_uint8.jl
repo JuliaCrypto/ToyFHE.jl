@@ -90,7 +90,7 @@ q = nextprime(big(2)^51)
 params = BFVParams(
     ℛ,
     ℛbig,
-    plaintext_modulus,
+    BFV.plaintext_space(ℛ, plaintext_modulus),
     8/√(2π),
     div(q, plaintext_modulus)
 )
@@ -101,4 +101,6 @@ ppoly = encode(factors, ℤpx, map(ℤplainx, [1, 2, 3, 4, 5, 6]))
 epoly = params.ℛ(lift(PolynomialRing(ℤ,"x")[1], ppoly))
 
 c1 = encrypt(kp, epoly)
-decode(factors, decrypt(kp, c1*c1))
+let dec = decode(factors, decrypt(kp, c1*c1))
+    @test dec == [1, 4, 9, 16, 25, 36]
+end

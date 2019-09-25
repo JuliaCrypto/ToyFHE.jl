@@ -3,14 +3,22 @@ module BGV
     using Random
     using Distributions
     using GaloisFields
-    using ..Karney
     using ..NTT
+    using ..CryptParameters
+    using Primes
+    using BitIntegers
+    using Nemo
+    using AbstractAlgebra
+    using Mods
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod
+    import ..FHE: SHEShemeParams, RingSampler, modulus, degree
     export BGVParams
 
-    import FHE: keygen, encrypt, decrypt, SHEShemeParams
+    import FHE: keygen, encrypt, decrypt, coefftype
+    import Base: +, *, -
+
 
     struct BGVParams <: SHEShemeParams
         # The Cypertext ring over which operations are performed

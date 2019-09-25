@@ -10,7 +10,7 @@
 module CryptParameters
 
     using GaloisFields
-    import ..LWERing
+    import ..NegacyclicRing
     export StdDistribution, HEStd_uniform, HEStd_error, HEStd_ternary,
         StdSecurity, HEStd_128_classic, HEStd_192_classic, HEStd_256_classic
 
@@ -20,10 +20,10 @@ module CryptParameters
     """
     const palisade_parameters = Dict(
         # m => ℛ
-        16 => LWERing{GaloisField(1099511627873), 8}(108163207722),
-        1024 => LWERing{GaloisField(525313), 512}(513496),
-        2048 => LWERing{GaloisField(34359724033), 1024}(7225104974),
-        4096 => LWERing{GaloisField(1152921504606830593), 2048}(811032584449645127)
+        16 => NegacyclicRing{GaloisField(1099511627873), 8}(108163207722),
+        1024 => NegacyclicRing{GaloisField(525313), 512}(513496),
+        2048 => NegacyclicRing{GaloisField(34359724033), 1024}(7225104974),
+        4096 => NegacyclicRing{GaloisField(1152921504606830593), 2048}(811032584449645127)
     )
 
     @enum(StdDistribution,

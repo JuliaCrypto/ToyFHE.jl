@@ -81,7 +81,7 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "baaf9e165ba8a2d11fb4fb3511782ee070ee3694"
+path = "/Users/kfischer/.julia/dev/Distributions"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.21.1"
 
@@ -132,6 +132,7 @@ uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
 version = "0.7.0"
 
 [[LibGit2]]
+deps = ["Printf"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
 [[Libdl]]
@@ -162,6 +163,12 @@ version = "0.4.2"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[Mods]]
+deps = ["Test"]
+git-tree-sha1 = "e31203c06840dd7e44af0181a79dfbcd83337beb"
+uuid = "7475f97c-0381-53b1-977b-4c60186c8d62"
+version = "0.1.0"
+
 [[Nemo]]
 deps = ["AbstractAlgebra", "BinaryProvider", "InteractiveUtils", "Libdl", "LinearAlgebra", "Markdown", "Random", "Test"]
 path = "/Users/kfischer/.julia/dev/Nemo"
@@ -181,9 +188,9 @@ version = "1.1.0"
 
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
-git-tree-sha1 = "9d6a9b3e19634612fb1edcafc4b1d75242b24bde"
+git-tree-sha1 = "035f8d60ba2a22cb1d2580b1e0e5ce0cb05e4563"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.9.9"
+version = "0.9.10"
 
 [[Parsers]]
 deps = ["Dates", "Test"]

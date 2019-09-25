@@ -17,14 +17,14 @@ params = BFVParams(
 kp = FHE.BFV.keygen(params)
 
 F = GaloisField(65537)
-ℛplain = LWERing{F, degree(params.ℛ)}(GaloisFields.minimal_primitive_root(F, 2degree(params.ℛ)))
+ℛplain = FHE.BFV.plaintext_space(params)
 
 plain = OffsetArray(zeros(F, degree(params.ℛ)), 0:degree(params.ℛ)-1)
 plain[0] = 1
 plain[1] = 1
 encoded = inntt(RingCoeffs{ℛplain}(plain))
 
-embedded = FHE.NTT.LWERingElement(
+embedded = FHE.NTT.NegacyclicRingElement(
     FHE.NTT.RingCoeffs{params.ℛ}(map(encoded.coeffs) do x
         eltype(params.ℛ)(x.n)
     end)
@@ -41,7 +41,7 @@ function switch_plain(x)
     end)
 end
 
-embedded2 = FHE.NTT.LWERingElement(
+embedded2 = FHE.NTT.NegacyclicRingElement(
     FHE.NTT.RingCoeffs{params.ℛ}(map(encoded2.coeffs) do x
         eltype(params.ℛ)(x.n)
     end)
@@ -53,4 +53,8 @@ c1 = encrypt(kp, FHE.NTT.nntt(embedded))
 c2 = encrypt(kp, FHE.NTT.nntt(embedded2))
 y = c1*c2
 xx = decrypt(kp, y)
-nntt(RingCoeffs{ℛplain}(xx.p))
+let data = nntt(xx).data
+    @test data[0] == 5
+    @test data[1] == 10
+    @test all(iszero, data[2:end])
+end

@@ -3,17 +3,17 @@ module BFV
     using Random
     using Distributions
     using GaloisFields
-    using ..Karney
     using ..NTT
     using ..CryptParameters
     using Primes
     using BitIntegers
     using Nemo
     using AbstractAlgebra
+    using Mods
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod
-    import ..FHE: SHEShemeParams, RingSampler
+    import ..FHE: SHEShemeParams, RingSampler, modulus, degree
     export BFVParams
 
     import FHE: keygen, encrypt, decrypt, coefftype
@@ -24,17 +24,26 @@ module BFV
         ℛ
         # The big ring used during multiplication
         ℛbig
-        # The plain modulus. Plaintexts are elements mod p.
-        p
+        # The plain ring.
+        ℛplain
         σ
         Δ
     end
 
-    function plaintext_space(params::BFVParams)
-        if isa(params.ℛ, ResRing)
-            PolynomialRing(ResidueRing(Nemo.ZZ, params.p), "x")[1]
+    plaintext_space(p::BFVParams) = p.ℛplain
+
+    plaintext_space(r::ResRing, p) = PolynomialRing(ResidueRing(Nemo.ZZ, p), "x")[1]
+    function plaintext_space(r::NegacyclicRing, p)
+        coefft = Primes.isprime(p) ? GaloisField(p) :
+            p == 256 ? UInt8 :
+            Mod(p)
+        if Primes.isprime(p)
+            # TODO: Also needs to check here if the prime admits 2n-th roots of
+            # unities.
+            NegacyclicRing{coefft, degree(modulus(r))}(
+                GaloisFields.minimal_primitive_root(coefft, 2degree(modulus(r))))
         else
-            error("Only Nemo supported here")
+            NegacyclicRing{coefft, degree(modulus(r))}()
         end
     end
 
@@ -101,11 +110,11 @@ module BFV
         Δ = div(qPrime, p)
 
         𝔽 = GaloisField(qPrime)
-        ℛ = LWERing{𝔽, n}(GaloisFields.minimal_primitive_root(𝔽, 2n))
+        ℛ = NegacyclicRing{𝔽, n}(GaloisFields.minimal_primitive_root(𝔽, 2n))
         𝔽big = GaloisField(qPrimeLarge)
-        ℛbig = LWERing{𝔽big, n}(GaloisFields.minimal_primitive_root(𝔽big, 2n))
+        ℛbig = NegacyclicRing{𝔽big, n}(GaloisFields.minimal_primitive_root(𝔽big, 2n))
 
-        BFVParams(ℛ, ℛbig, p, σ, Δ)
+        BFVParams(ℛ, ℛbig, plaintext_space(ℛ, p), σ, Δ)
     end
 
     struct PrivKey
@@ -139,15 +148,15 @@ module BFV
     Base.getindex(c::CipherText, i::Integer) = c.cs[i]
 
     nntt_hint(r) = r
-    nntt_hint(r::LWERingElement) = nntt(r)
+    nntt_hint(r::NegacyclicRingElement) = nntt(r)
     inntt_hint(r) = r
-    inntt_hint(r::LWERingDualElement) = inntt(r)
+    inntt_hint(r::NegacyclicRingDualElement) = inntt(r)
 
     function keygen(rng, params::BFVParams)
         @fields_as_locals params::BFVParams
 
         dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
-        dgg = RingSampler(ℛ, DiscreteNormal(coefftype(ℛ), 0, σ))
+        dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
         a = nntt_hint(rand(rng, dug))
         s = nntt_hint(rand(rng, dgg))
@@ -163,7 +172,7 @@ module BFV
         @fields_as_locals key::PubKey
         @fields_as_locals params::BFVParams
 
-        dgg = RingSampler(ℛ, DiscreteNormal(coefftype(ℛ), 0, σ))
+        dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
         u = nntt_hint(rand(rng, dgg))
         e₁ = nntt_hint(rand(rng, dgg))
@@ -276,7 +285,7 @@ module BFV
         end
 
         c = map(c) do e
-            switch(ℛ, multround(inntt_hint(e), p, modulus(coefftype(ℛ))))
+            switch(ℛ, multround(inntt_hint(e), modulus(base_ring(ℛplain)), modulus(coefftype(ℛ))))
         end
 
         CipherText(params, (c...,))
@@ -296,7 +305,7 @@ module BFV
 
         b = inntt_hint(b)
         ℛplain = plaintext_space(params)
-        ℛplain(map(x->coefftype(ℛplain)(fqmod(divround(x, Δ), modulus(ℛplain))), NTT.coeffs(b)))
+        ℛplain(map(x->coefftype(ℛplain)(fqmod(divround(x, Δ), modulus(base_ring(ℛplain)))), NTT.coeffs(b)))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
 end

@@ -17,8 +17,7 @@ function encrypt end
 function decrypt end
 
 include("poly.jl")
-include("Karney.jl")
-include("NTT.jl")
+include("pow2_cyc_rings.jl")
 using .NTT
 include("utils.jl")
 include("cryptparams.jl")
