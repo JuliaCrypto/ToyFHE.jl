@@ -1,0 +1,8 @@
+[deps]
+BitIntegers = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
+GaloisFields = "8d0d7f98-d412-5cd4-8397-071c807280aa"
+Hecke = "3e1990a7-5d81-5526-99ce-9ba3ff248f21"
+Nemo = "2edaba10-b0f1-5616-af89-8c11ac63239a"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

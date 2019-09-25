@@ -83,7 +83,7 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "953129ec145d6f91e62c0347e73cc993f129352e"
+git-tree-sha1 = "4a21ce58a10d20f8db1c7f100a62d2a63b1932bc"
 repo-rev = "kf/discretenormal"
 repo-url = "https://github.com/Keno/Distributions.jl"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"

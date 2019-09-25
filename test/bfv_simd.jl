@@ -1,8 +1,8 @@
 using ToyFHE
+using ToyFHE: degree
 using ToyFHE.BFV
 using ToyFHE.NTT
 using GaloisFields
-using Polynomials
 using OffsetArrays
 using Test
 using Primes

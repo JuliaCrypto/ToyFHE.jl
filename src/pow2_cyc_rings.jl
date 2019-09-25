@@ -65,7 +65,7 @@ function NegacyclicRing{Field, N}(ψ::Integer) where {Field, N}
     @assert ψ < char(Field)
     NegacyclicRing{Field, N}(convert(Field, ψ))
 end
-Polynomials.degree(ℛ::NegacyclicRing{F,N}) where {F,N} = N
+degree(ℛ::NegacyclicRing{F,N}) where {F,N} = N
 Base.eltype(ℛ::NegacyclicRing{F,N}) where {F,N} = F
 
 @auto_hash_equals struct RingCoeffs{ℛ, Field, T<:AbstractVector{Field}} <: AbstractVector{Field}

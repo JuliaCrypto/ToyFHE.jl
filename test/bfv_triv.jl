@@ -1,7 +1,5 @@
 using ToyFHE
 using ToyFHE.BFV
-using GaloisFields
-using Polynomials
 using OffsetArrays
 using Test
 
@@ -11,7 +9,7 @@ params = BFVParams(
 )
 kp = ToyFHE.BFV.keygen(params)
 
-plain = OffsetArray(zeros(UInt8, degree(params.ℛ)), 0:degree(params.ℛ)-1)
+plain = OffsetArray(zeros(UInt8, ToyFHE.degree(params.ℛ)), 0:ToyFHE.degree(params.ℛ)-1)
 plain[0] = 6
 encoded = ToyFHE.NTT.NegacyclicRingElement(
     ToyFHE.NTT.RingCoeffs{params.ℛ}(map(x->eltype(params.ℛ)(x), plain))
