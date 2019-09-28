@@ -12,7 +12,7 @@ module BGV
     using Mods
 
     import GaloisFields: PrimeField
-    import ..Utils: @fields_as_locals, fqmod
+    import ..Utils: @fields_as_locals, fqmod, plaintext_space
     import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree
     export BGVParams
 
@@ -23,10 +23,13 @@ module BGV
     struct BGVParams <: SHEShemeParams
         # The Cypertext ring over which operations are performed
         ℛ
-        # The plain modulus. Plaintexts are elements mod p.
-        p
+        # The plaintext ring.
+        ℛplain
         σ
     end
+    BGVParams(ring, p::Integer, σ) =
+        BGVParams(ring, plaintext_space(ring, p), σ)
+    plaintext_space(params::BGVParams) = params.ℛplain
 
     struct PrivKey
         params::BGVParams
@@ -50,22 +53,25 @@ module BGV
         pub
     end
 
-    struct CipherText{T}
-        c::NTuple{2, T}
+    struct CipherText{T, N}
+        params::BGVParams
+        cs::NTuple{N, T}
     end
-    CipherText(c0::T, c1::T) where {T} = CipherText((c0, c1))
-    Base.getindex(c::CipherText, i::Integer) = c.c[i]
+    Base.length(c::CipherText) = length(c.cs)
+    Base.getindex(c::CipherText, i::Integer) = c.cs[i]
+    Base.lastindex(c::CipherText) = length(c)
 
     function keygen(rng, params::BGVParams)
         @fields_as_locals params::BGVParams
 
-        dug = RingSampler{ℛ}(DiscreteUniform(eltype(ℛ)))
-        dgg = RingSampler{ℛ}(DiscreteNormal{eltype(ℛ)}(0, σ))
+        dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
+        dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
         a = nntt(rand(rng, dug))
         s = nntt(rand(rng, dgg))
         e = nntt(rand(rng, dgg))
 
+        p = modulus(coefftype(ℛplain))
         b = a*s + e*p
 
         KeyPair(PrivKey(params, s), PubKey(params, a, b))
@@ -76,15 +82,16 @@ module BGV
         @fields_as_locals key::PubKey
         @fields_as_locals params::BGVParams
 
-        dgg = RingSampler{ℛ}(DiscreteNormal{eltype(ℛ)}(0, σ))
+        dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
         v = nntt(rand(rng, dgg))
         e0 = nntt(rand(rng, dgg))
         e1 = nntt(rand(rng, dgg))
 
+        p = modulus(coefftype(ℛplain))
         c0 = b*v + p*e0 + plaintext
         c1 = a*v + p*e1
-        CipherText(c0, c1)
+        CipherText(params, (c0, c1))
     end
     encrypt(rng::AbstractRNG, kp::KeyPair, plaintext) = encrypt(rng, kp.pub, plaintext)
     encrypt(key, plaintext) = encrypt(Random.GLOBAL_RNG, key, plaintext)
@@ -93,24 +100,28 @@ module BGV
         @fields_as_locals key::PrivKey
         @fields_as_locals params::BGVParams
 
-        cc = inntt(c[1] - s*c[2])
-        FixedDegreePoly(map(x->UInt8(fqmod(x, p)), cc.p.p))
+        b = nntt_hint(c[1])
+        spow = s
+        for i = 2:length(c)
+            b -= spow*nntt_hint(c[i])
+            spow *= s
+        end
+
+        b = inntt_hint(b)
+        ℛplain = plaintext_space(params)
+        ℛplain(map(x->coefftype(ℛplain)(fqmod(x, modulus(base_ring(ℛplain)))), NTT.coeffs(b)))
     end
     decrypt(kp::KeyPair, plaintext) = decrypt(kp.priv, plaintext)
 
-    struct MultCipherText{T}
-        c::NTuple{3,T}
-    end
-
     function *(c1::CipherText, c2::CipherText)
-        MultCipherText(
+        CipherText(c1.params,(
            c1[1] * c2[1],
            c1[1] * c2[2] + c1[2] * c2[1],
          -(c1[2] * c2[2])
-        )
+        ))
     end
 
-    function keyswitch(ek::EvalKey, c::MultCipherText)
+    function keyswitch(ek::EvalKey, c::CipherText)
         @fields_as_locals ek::EvalKey
         # TODO
     end

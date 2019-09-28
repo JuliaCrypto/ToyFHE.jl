@@ -16,7 +16,8 @@ import ..ToyFHE: coefftype, modulus, degree
 import Nemo: base_ring
 
 export NegacyclicRing, RingSampler, nntt, inntt, FixedDegreePoly,
-    NegacyclicRingElement, NegacyclicRingDualElement, RingCoeffs, coeffs
+    NegacyclicRingElement, NegacyclicRingDualElement, RingCoeffs, coeffs,
+    nntt_hint, inntt_hint
 
 @auto_hash_equals struct FixedDegreePoly{N, T <: AbstractVector}
     p::T
@@ -246,5 +247,11 @@ end
 function inntt(p̃::NegacyclicRingDualElement{ℛ})::NegacyclicRingElement{ℛ} where {ℛ}
     NegacyclicRingElement(inntt(p̃.data))
 end
+
+# Hints
+nntt_hint(r) = r
+nntt_hint(r::NegacyclicRingElement) = nntt(r)
+inntt_hint(r) = r
+inntt_hint(r::NegacyclicRingDualElement) = inntt(r)
 
 end

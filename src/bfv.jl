@@ -24,7 +24,7 @@ module BFV
         ℛ
         # The big ring used during multiplication
         ℛbig
-        # The plain ring.
+        # The plaintext ring.
         ℛplain
         relin_window
         σ
@@ -32,21 +32,6 @@ module BFV
     end
 
     plaintext_space(p::BFVParams) = p.ℛplain
-
-    plaintext_space(r::ResRing, p) = PolynomialRing(ResidueRing(Nemo.ZZ, p), "x")[1]
-    function plaintext_space(r::NegacyclicRing, p)
-        coefft = Primes.isprime(p) ? GaloisField(p) :
-            p == 256 ? UInt8 :
-            Mod(p)
-        if Primes.isprime(p) && p > 2degree(modulus(r))
-            # TODO: Also needs to check here if the prime admits 2n-th roots of
-            # unities.
-            NegacyclicRing{coefft, degree(modulus(r))}(
-                GaloisFields.minimal_primitive_root(coefft, 2degree(modulus(r))))
-        else
-            NegacyclicRing{coefft, degree(modulus(r))}()
-        end
-    end
 
     # Matches parameter generation in PALISADE
     function BFVParams(p, σ=8/√(2π), α=9, r=1; eval_mult_count = 0, security = HEStd_128_classic, relin_window=1)
@@ -151,11 +136,6 @@ module BFV
     Base.getindex(c::CipherText, i::Integer) = c.cs[i]
     Base.lastindex(c::CipherText) = length(c)
 
-    nntt_hint(r) = r
-    nntt_hint(r::NegacyclicRingElement) = nntt(r)
-    inntt_hint(r) = r
-    inntt_hint(r::NegacyclicRingDualElement) = inntt(r)
-
     function keygen(rng, params::BFVParams)
         @fields_as_locals params::BFVParams
 
@@ -246,17 +226,6 @@ module BFV
     Nemo.modulus(e::PrimeField) = GaloisFields.char(e)
     Nemo.lift(e::PrimeField) = e.n
     Nemo.lift(e::Nemo.nmod) = lift(Nemo.ZZ, e)
-
-    function fqmod(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, nq::Integer)
-        q = modulus(e)
-        halfq = q >> 1
-        e = lift(e)
-        if e > halfq
-            mod(e - q, nq)
-        else
-            mod(e, nq)
-        end
-    end
 
     divround(e::Integer, q::Integer) = div(e, q, RoundNearestTiesAway)
     divround(e::fmpz, q::Integer) = divround(BigInt(e), q)
