@@ -107,18 +107,14 @@ module BFV
         largebits = 2*ceil(Int, log2(q)) + ceil(Int, log2(p)) + 3
         Tlarge = largebits > 128 ? Int256 : Int128
         qLargeBig = nextprime(big(2)^largebits + 1, 1; interval=2n)
-        @show (log2(q), largebits, qLargeBig)
         qPrimeLarge = Tlarge(qLargeBig)
-        @show qPrimeLarge
 
         Δ = div(qPrime, p)
 
         𝔽 = GaloisField(qPrime)
         ℛ = NegacyclicRing{𝔽, n}(GaloisFields.minimal_primitive_root(𝔽, 2n))
         𝔽big = GaloisField(qPrimeLarge)
-        @show 𝔽big
         r = GaloisFields.minimal_primitive_root(𝔽big, 2n)
-        @show r
         ℛbig = NegacyclicRing{𝔽big, n}(r)
 
         BFVParams(ℛ, ℛbig, plaintext_space(ℛ, p), relin_window, σ, Δ)
