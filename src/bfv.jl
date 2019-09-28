@@ -26,6 +26,7 @@ module BFV
         ℛbig
         # The plain ring.
         ℛplain
+        relin_window
         σ
         Δ
     end
@@ -37,7 +38,7 @@ module BFV
         coefft = Primes.isprime(p) ? GaloisField(p) :
             p == 256 ? UInt8 :
             Mod(p)
-        if Primes.isprime(p)
+        if Primes.isprime(p) && p > 2degree(modulus(r))
             # TODO: Also needs to check here if the prime admits 2n-th roots of
             # unities.
             NegacyclicRing{coefft, degree(modulus(r))}(
@@ -48,7 +49,7 @@ module BFV
     end
 
     # Matches parameter generation in PALISADE
-    function BFVParams(p, σ=8/√(2π), α=9, r=1; eval_mult_count = 0, security = HEStd_128_classic)
+    function BFVParams(p, σ=8/√(2π), α=9, r=1; eval_mult_count = 0, security = HEStd_128_classic, relin_window=1)
         @assert r >= 1
         Berr = σ*√(α)
         Bkey = Berr
@@ -105,16 +106,22 @@ module BFV
         qPrime = nextprime(Int128(2)^(ceil(Int, log2(q))+1) + 1, 1; interval=2n)
         largebits = 2*ceil(Int, log2(q)) + ceil(Int, log2(p)) + 3
         Tlarge = largebits > 128 ? Int256 : Int128
-        qPrimeLarge = Tlarge(nextprime(big(2)^largebits + 1, 1; interval=2n))
+        qLargeBig = nextprime(big(2)^largebits + 1, 1; interval=2n)
+        @show (log2(q), largebits, qLargeBig)
+        qPrimeLarge = Tlarge(qLargeBig)
+        @show qPrimeLarge
 
         Δ = div(qPrime, p)
 
         𝔽 = GaloisField(qPrime)
         ℛ = NegacyclicRing{𝔽, n}(GaloisFields.minimal_primitive_root(𝔽, 2n))
         𝔽big = GaloisField(qPrimeLarge)
-        ℛbig = NegacyclicRing{𝔽big, n}(GaloisFields.minimal_primitive_root(𝔽big, 2n))
+        @show 𝔽big
+        r = GaloisFields.minimal_primitive_root(𝔽big, 2n)
+        @show r
+        ℛbig = NegacyclicRing{𝔽big, n}(r)
 
-        BFVParams(ℛ, ℛbig, plaintext_space(ℛ, p), σ, Δ)
+        BFVParams(ℛ, ℛbig, plaintext_space(ℛ, p), relin_window, σ, Δ)
     end
 
     struct PrivKey
@@ -146,6 +153,7 @@ module BFV
     end
     Base.length(c::CipherText) = length(c.cs)
     Base.getindex(c::CipherText, i::Integer) = c.cs[i]
+    Base.lastindex(c::CipherText) = length(c)
 
     nntt_hint(r) = r
     nntt_hint(r::NegacyclicRingElement) = nntt(r)
@@ -167,6 +175,28 @@ module BFV
             PrivKey(params, s),
             PubKey(params, a, -(a*s + e)))
     end
+
+    function make_eval_key(rng::AbstractRNG, ::Type{EvalKey}, (old, new)::Pair{<:Any, PrivKey})
+        @fields_as_locals new::PrivKey
+        @fields_as_locals params::BFVParams
+
+        dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
+        dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
+
+        nwindows = ndigits(modulus(coefftype(ℛ)), base=2^relin_window)
+        evala = [old * coefftype(params.ℛ)(2)^(i*relin_window) for i = 0:nwindows-1]
+        evalb = eltype(evala)[]
+
+        for i = 1:length(evala)
+            a = nntt_hint(rand(rng, dug))
+            e = nntt_hint(rand(rng, dgg))
+            push!(evalb, a)
+            evala[i] -= a*new.s + e
+        end
+        EvalKey(new.params, evala, evalb)
+    end
+    keygen(rng::AbstractRNG, ::Type{EvalKey}, priv::PrivKey) = make_eval_key(rng, EvalKey, priv.s^2=>priv)
+    keygen(::Type{EvalKey}, priv::PrivKey) = keygen(Random.GLOBAL_RNG, EvalKey, priv)
 
     function encrypt(rng::AbstractRNG, key::PubKey, plaintext)
         @fields_as_locals key::PubKey
@@ -308,4 +338,29 @@ module BFV
         ℛplain(map(x->coefftype(ℛplain)(fqmod(divround(x, Δ), modulus(base_ring(ℛplain)))), NTT.coeffs(b)))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
+
+    function keyswitch(ek::EvalKey, c::CipherText)
+        @fields_as_locals ek::EvalKey
+        @fields_as_locals params::BFVParams
+        @assert length(c.cs) in (2,3)
+        nwindows = ndigits(modulus(coefftype(ℛ)), base=2^relin_window)
+
+        c1 = nntt_hint(c[1])
+        c2 = length(c) == 2 ? zero(c[2]) : nntt_hint(c[2])
+
+        cendcoeffs = NTT.coeffs(inntt_hint(c[end]))
+        ds = map(cendcoeffs) do x
+            digits(x.n, base=2^params.relin_window, pad=nwindows)
+        end
+        ps = map(1:nwindows) do i
+            nntt_hint(ℛ([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)]))
+        end
+
+        for i in eachindex(a)
+            c2 += b[i] * ps[i]
+            c1 += a[i] * ps[i]
+        end
+
+        CipherText(ek.params, (c1, c2))
+    end
 end

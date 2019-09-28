@@ -9,7 +9,7 @@ using AutoHashEquals
 using FourierTransforms
 using LinearAlgebra
 
-import Base: *, +, -
+import Base: *, +, -, ^
 
 import GaloisFields: PrimeField
 import ..ToyFHE: coefftype, modulus, degree
@@ -72,6 +72,7 @@ Base.eltype(ℛ::NegacyclicRing{F,N}) where {F,N} = F
     coeffs::T
 end
 RingCoeffs{ℛ}(coeffs::T) where {ℛ,T} = RingCoeffs{ℛ, eltype(ℛ), T}(coeffs)
+Base.convert(::Type{RingCoeffs{ℛ,F,T}}, coeffs::T) where {ℛ,F,T} = RingCoeffs{ℛ,F,T}(coeffs)
 Base.copy(r::RingCoeffs{ℛ,F,T}) where {ℛ,F,T} = RingCoeffs{ℛ,F,T}(copy(r.coeffs))
 RingCoeffs{ℛ}(r::RingCoeffs{ℛ}) where {ℛ} = copy(r)
 Base.axes(r::RingCoeffs) = axes(r.coeffs)
@@ -113,13 +114,18 @@ function *(a::NegacyclicRingDualElement{ℛ},
     NegacyclicRingDualElement(RingCoeffs{ℛ}(coeffs(a) .* coeffs(b)))
 end
 function *(a::NegacyclicRingDualElement{ℛ},
-           b::Integer) where {ℛ}
+           b::Union{Integer, PrimeField}) where {ℛ}
     NegacyclicRingDualElement(RingCoeffs{ℛ}(coeffs(a) * b))
 end
-function *(a::Integer,
+function *(a::Union{Integer, PrimeField},
            b::NegacyclicRingDualElement{ℛ}) where {ℛ}
     NegacyclicRingDualElement(RingCoeffs{ℛ}(a * coeffs(b)))
 end
+function ^(x::NegacyclicRingDualElement, n::Integer)
+    @assert n >= 0
+    Base.power_by_squaring(x,n)
+end
+
 
 for f in (:+, :-)
     for T in (NegacyclicRingElement, NegacyclicRingDualElement)

@@ -8,3 +8,5 @@ include("bfv_simd.jl")
 # BFV with p=256 SIMD over non-cyclotomic ring
 include("bfv_uint8.jl")
 
+# Keyswitching for BFV
+include("bfv_keyswitch.jl")
