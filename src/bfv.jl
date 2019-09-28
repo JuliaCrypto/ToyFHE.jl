@@ -271,6 +271,7 @@ module BFV
         end
     end
 
+
     function switchel(T, e)
         q = modulus(e)
         halfq = q >> 1
@@ -359,4 +360,50 @@ module BFV
 
         CipherText(ek.params, (c1, c2))
     end
+
+    """
+    Compute the *invariant noise budget*, defined by:
+
+            -log2(2‖v‖) = log2(q) - log2(q‖v‖) - 1.
+
+    If this quantity is >0, the ciphertext is expected to decrypt correctly with
+    high probability.
+
+    This notion of noise was first introduced by the SEAL HE library. See [CLP19]
+    for details.
+
+    [CLP19] Anamaria Costache, Kim Laine, and Rachel Player
+            "Homomorphic noise growth in practice: comparing BGV and FV"
+            https://eprint.iacr.org/2019/493.pdf
+    """
+    function invariant_noise_budget(pk::PrivKey, c::CipherText)
+        @fields_as_locals pk::PrivKey
+        @fields_as_locals params::BFVParams
+
+        b = nntt_hint(c[1])
+        spow = s
+
+        for i = 2:length(c)
+            b += spow*nntt_hint(c[i])
+            spow *= s
+        end
+
+        b = inntt_hint(b)
+        ℛplain = plaintext_space(params)
+
+        function birem(x)
+            r = rem(x, Δ)
+            if r > div(Δ, 2)
+                return Δ - r
+            else
+                return r
+            end
+        end
+
+        # -log2(2‖v‖) = log(q) - log(t) - 1 - max_i log2(Δ |v_i|)
+        log2(modulus(coefftype(ℛ))) - log2(modulus(coefftype(ℛplain))) - 1 -
+            maximum(log2(birem(c.n)) for c in NTT.coeffs(b))
+    end
+    invariant_noise_budget(kp::KeyPair, c::CipherText) =
+        invariant_noise_budget(kp.priv, c)
 end

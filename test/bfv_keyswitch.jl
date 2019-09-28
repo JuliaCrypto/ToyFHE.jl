@@ -5,7 +5,7 @@ using Test
 
 params = BFVParams(
     7, # plaintext modulus
-    ; eval_mult_count = 2
+    ; eval_mult_count = 3
 )
 
 plain = OffsetArray(zeros(UInt8, ToyFHE.degree(params.ℛ)), 0:ToyFHE.degree(params.ℛ)-1)

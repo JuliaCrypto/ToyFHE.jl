@@ -10,3 +10,6 @@ include("bfv_uint8.jl")
 
 # Keyswitching for BFV
 include("bfv_keyswitch.jl")
+
+# Noise measurement for bfv
+include("bfv_noise.jl")
