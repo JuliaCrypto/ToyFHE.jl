@@ -40,9 +40,9 @@ version = "0.5.6"
 
 [[BitIntegers]]
 deps = ["Random"]
-git-tree-sha1 = "9ff66aa4a89ea7ed2040a627ecaf063e39f25937"
-repo-rev = "master"
-repo-url = "https://github.com/rfourquet/BitIntegers.jl.git"
+git-tree-sha1 = "9ca7723bc083cd40b648414a1fbc581c94623682"
+repo-rev = "kf/div"
+repo-url = "https://github.com/Keno/BitIntegers.jl"
 uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
 version = "0.2.0"
 

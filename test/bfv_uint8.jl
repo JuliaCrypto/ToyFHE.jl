@@ -91,6 +91,7 @@ params = BFVParams(
     ℛ,
     ℛbig,
     BFV.plaintext_space(ℛ, plaintext_modulus),
+    1,
     8/√(2π),
     div(q, plaintext_modulus)
 )
