@@ -1,7 +1,6 @@
 using ToyFHE
 using ToyFHE.BGV
 using GaloisFields
-using Polynomials
 using OffsetArrays
 using Test
 
