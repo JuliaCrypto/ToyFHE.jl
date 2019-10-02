@@ -36,6 +36,8 @@ Base.zero(::Type{FixedDegreePoly{N, T}}) where {N, T} =
 Polynomials.degree(p::FixedDegreePoly{N}) where {N} = N
 Base.getindex(p::FixedDegreePoly, args...) = getindex(p.p, args...)
 
+is_primitive_root(ψ, n) = ψ^n == 1
+
 """
 Represents the ring 𝔽q[x]/(xⁿ+1) with optional identified 2n-th primitive root of unity.
 """
@@ -43,7 +45,7 @@ struct NegacyclicRing{BaseRing, N}
     # 2N'th primitive root of unity in BaseRing (or zero if unused)
     ψ::BaseRing
     function NegacyclicRing{BaseRing, N}(ψ::BaseRing) where {BaseRing, N}
-        @assert ψ^2N == 1
+        @assert is_primitive_root(ψ, 2N)
         new{BaseRing, N}(ψ)
     end
     function NegacyclicRing{BaseRing, N}() where {BaseRing, N}
@@ -176,20 +178,6 @@ end
         end
         X
     end
-end
-
-function _ntt(ℛ::NegacyclicRing, v::AbstractVector)
-    @assert first(axes(v)[1]) == 0
-    ω = ℛ.ψ^2
-    # TODO: Do this using the DFT algorithm
-    [sum((v[j]*ω^(j*i)) for j in eachindex(v)) for i in eachindex(v)]
-end
-
-function _intt(ℛ::NegacyclicRing, v::AbstractVector)
-    @assert first(axes(v)[1]) == 0
-    ω = ℛ.ψ^2
-    # TODO: Do this using the DFT algorithm
-    [sum(v[j]*inv(ω)^(j*i) for j = eachindex(v)) for i in eachindex(v)]
 end
 
 function LinearAlgebra.mul!(y::NegacyclicRingDualElement{ℛ}, p::CTPlan{T}, x::NegacyclicRingElement{ℛ}) where {T, ℛ}
