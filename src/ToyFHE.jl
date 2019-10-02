@@ -23,8 +23,12 @@ include("utils.jl")
 include("cryptparams.jl")
 include("bgv.jl")
 include("bfv.jl")
+include("ckks.jl")
 include("nemo.jl")
-include("div_hacks.jl")
+
+if VERSION < v"1.4.0-DEV.208"
+    include("div_hacks.jl")
+end
 
 end
 
