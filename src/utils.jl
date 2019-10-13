@@ -10,6 +10,8 @@ using ..NTT
 using ..NTT: modulus, degree
 using Primes
 using Mods
+using StructArrays
+using OffsetArrays
 
 macro fields_as_locals(a)
     @assert isexpr(a, :(::))
@@ -43,16 +45,21 @@ end
 # allow this.
 Distributions.DiscreteUniform(T::Type) = T
 
-function fqmod(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, nq::Integer)
-    q = modulus(e)
-    halfq = q >> 1
-    e = lift(e)
-    if e > halfq
-        mod(e - q, nq)
-    else
-        mod(e, nq)
-    end
-end
+# HACK
+Base.BroadcastStyle(::Type{<:OffsetArray{<:Any, <:Any, T}}) where T<:StructArray = Base.BroadcastStyle(T)
 
+# HACK
+Base.convert(::Type{Integer}, x::PrimeField) = x.n
+
+# HACK
+Base.convert(::Type{<:StructArray{T}}, A::AbstractArray{T}) where {T} =
+    StructArray(A)
+
+# Hack
+Base.convert(::Type{Integer}, x::AbstractAlgebra.Generic.Res{fmpz}) = Nemo.lift(x)
+
+# Hack
+Base.div(a::Nemo.fmpz, b::BigInt, r::RoundingMode{:NearestTiesAway}) =
+    div(BigInt(a), b, r)
 
 end

@@ -5,7 +5,10 @@ using Test
 
 params = BFVParams(
     256, # plaintext modulus
-    ; eval_mult_count = 1
+    # We're only doing one multiplication, but let's give ourselves some room,
+    # since this test is only testing the basic correctness of the implementation.
+    # We need to validate the parameter selection elsewhere
+    ; eval_mult_count = 2
 )
 kp = ToyFHE.BFV.keygen(params)
 

@@ -12,8 +12,8 @@ module BGV
     using Mods
 
     import GaloisFields: PrimeField
-    import ..Utils: @fields_as_locals, fqmod, plaintext_space
-    import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree
+    import ..Utils: @fields_as_locals, plaintext_space
+    import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree, SignedMod
     export BGVParams
 
     import ToyFHE: keygen, encrypt, decrypt, coefftype
@@ -109,7 +109,7 @@ module BGV
 
         b = inntt_hint(b)
         ℛplain = plaintext_space(params)
-        ℛplain(map(x->coefftype(ℛplain)(fqmod(x, modulus(base_ring(ℛplain)))), NTT.coeffs(b)))
+        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(SignedMod(x), modulus(base_ring(ℛplain))))), NTT.coeffs(b)))
     end
     decrypt(kp::KeyPair, plaintext) = decrypt(kp.priv, plaintext)
 

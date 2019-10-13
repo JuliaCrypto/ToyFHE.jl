@@ -47,6 +47,5 @@ result = let dec = decrypt(kp, c)
     # Undo the root of unity premul
     multed = map(x->convert(Float64, x), scaled) .* [exp(-2*k/(2*length(scaled))*pi*im) for k in eachindex(scaled)]
     # FFT it and take only the non-conjugated coefficients
-    fft(multed)[1:2048]
+    fft(collect(multed))[1:2048]
 end
-@show result

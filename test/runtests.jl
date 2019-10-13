@@ -16,3 +16,6 @@ include("bfv_keyswitch.jl")
 
 # Noise measurement for bfv
 include("bfv_noise.jl")
+
+# BFV with CRT representation
+include("bfv_crt.jl")

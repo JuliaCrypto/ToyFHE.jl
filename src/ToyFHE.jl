@@ -17,6 +17,7 @@ function encrypt end
 function decrypt end
 
 include("poly.jl")
+include("signedmod.jl")
 include("pow2_cyc_rings.jl")
 using .NTT
 include("utils.jl")
@@ -25,6 +26,7 @@ include("bgv.jl")
 include("bfv.jl")
 include("ckks.jl")
 include("nemo.jl")
+include("crt.jl")
 
 if VERSION < v"1.4.0-DEV.208"
     include("div_hacks.jl")

@@ -13,7 +13,7 @@ module BFV
 
     import GaloisFields: PrimeField
     import ..Utils: @fields_as_locals, fqmod, plaintext_space
-    import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree
+    import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree, SignedMod
     export BFVParams
 
     import ToyFHE: keygen, encrypt, decrypt, coefftype
@@ -201,25 +201,23 @@ module BFV
         end
     end
 
-    function multround(e::Integer, a::Integer, b::Integer)
+    function multround(e::SignedMod, a::Integer, b::Integer)
         div(e * a, b, RoundNearestTiesAway)
     end
+    function multround(e::BigInt, a::Integer, b::Integer)
+        div(e * a, b, RoundNearestTiesAway)
+    end
+    multround(e, a::Integer, b::fmpz) = multround(e, a, BigInt(b))
     multround(e::fmpz, a::Integer, b::Integer) = multround(BigInt(e), a, b)
     multround(e::fmpz, a::Integer, b::fmpz) = multround(BigInt(e), a, BigInt(b))
 
-    function multround(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, a::Integer, b)
-        q = modulus(e)
-        halfq = q >> 1
-        en = lift(e)
-        if en > halfq
-            return oftype(e, q - multround(q - en, a, b))
-        else
-            return oftype(e, multround(en, a, b))
-        end
-    end
     function multround(e, a::Integer, b)
-        oftype(e, map(NTT.coeffs(e)) do x
-            multround(x, a, b)
+        oftype(e, broadcast(NTT.coeffs(e)) do x
+            if isa(x, AbstractAlgebra.Generic.Res{fmpz})
+                multround(BigInt(Nemo.lift(x)), a, b)
+            else
+                multround(SignedMod(x), a, b).x
+            end
         end)
     end
 
@@ -229,15 +227,8 @@ module BFV
 
     divround(e::Integer, q::Integer) = div(e, q, RoundNearestTiesAway)
     divround(e::fmpz, q::Integer) = divround(BigInt(e), q)
-    function divround(e::Union{PrimeField, Nemo.nmod, AbstractAlgebra.Generic.Res{fmpz}}, d::Integer)
-        q = modulus(e)
-        halfq = q >> 1
-        en = lift(e)
-        if en > halfq
-            return oftype(e, q - divround(q - en, d))
-        else
-            return oftype(e, divround(en, d))
-        end
+    function divround(e, d::Integer)
+        div(SignedMod(e), d, RoundNearestTiesAway)
     end
 
 
@@ -245,7 +236,7 @@ module BFV
         q = modulus(e)
         halfq = q >> 1
         diff = modulus(T) > q ? modulus(T) - q : q - modulus(T)
-        en = lift(e)
+        en = convert(Integer, e)
         if (q < modulus(T))
             if en > halfq
                 return T(en + diff)
@@ -262,7 +253,7 @@ module BFV
     end
 
     function switch(ℛ, e)
-        ℛ(map(NTT.coeffs(e)) do x
+        ℛ(broadcast(NTT.coeffs(e)) do x
             switchel(coefftype(ℛ), x)
         end)
     end
@@ -301,7 +292,7 @@ module BFV
 
         b = inntt_hint(b)
         ℛplain = plaintext_space(params)
-        ℛplain(map(x->coefftype(ℛplain)(fqmod(divround(x, Δ), modulus(base_ring(ℛplain)))), NTT.coeffs(b)))
+        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(divround(x, Δ), modulus(base_ring(ℛplain))))), NTT.coeffs(b)))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
 

@@ -8,6 +8,7 @@ using Random
 using AutoHashEquals
 using FourierTransforms
 using LinearAlgebra
+using StructArrays
 
 import Base: *, +, -, ^
 
@@ -85,14 +86,19 @@ Base.getindex(r::RingCoeffs, idxs...) = getindex(r.coeffs, idxs...)
 """
 Represents an element of 𝔽q[x]/(xⁿ+1).
 """
-@auto_hash_equals struct NegacyclicRingElement{ℛ #= ::NegacyclicRing{Field} =#, Field,  N}
-    p::FixedDegreePoly{N, RingCoeffs{ℛ, Field, OffsetVector{Field, Vector{Field}}}}
+@auto_hash_equals struct NegacyclicRingElement{ℛ #= ::NegacyclicRing{Field} =#, Field,  N, Storage <: AbstractVector{Field}}
+    p::FixedDegreePoly{N, RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}}
 end
-NegacyclicRingElement{ℛ,Field,N}(coeffs::AbstractVector) where {ℛ,Field,  N} =
-    NegacyclicRingElement{ℛ,Field,N}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
-Base.convert(::Type{NegacyclicRingElement{ℛ,Field,N}}, coeffs::OffsetVector{Field, Vector{Field}}) where {ℛ, Field, N} =
-    NegacyclicRingElement{ℛ,Field,N}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
-coeffs(e::NegacyclicRingElement) = e.p.p
+function NegacyclicRingElement{ℛ,Field,N}(coeffs::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}) where {ℛ,Field,N,Storage}
+    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(coeffs))
+end
+function NegacyclicRingElement{ℛ,Field,N}(coeffs::AbstractVector) where {ℛ,Field,  N}
+    Storage = isa(coeffs, OffsetVector) ? typeof(parent(coeffs)) : coeffs
+    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
+end
+Base.convert(::Type{NegacyclicRingElement{ℛ,Field,N,Storage}}, coeffs::OffsetVector{Field, Storage}) where {ℛ, Field, N, Storage} =
+    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
+coeffs(e::NegacyclicRingElement) = e.p.p.coeffs
 NegacyclicRingElement(ℛ::NegacyclicRing) = NegacyclicRingElement{ℛ, eltype(ℛ), degree(modulus(ℛ))}
 NegacyclicRingElement(coeffs::RingCoeffs{ℛ}) where {ℛ} = NegacyclicRingElement(ℛ)(coeffs)
 Base.zero(::Type{NegacyclicRingElement{ℛ,Field,N}}) where {ℛ,Field,N} =
@@ -103,11 +109,14 @@ Base.zero(::Type{NegacyclicRingElement{ℛ,Field,N}}) where {ℛ,Field,N} =
 """
 Represents an ntt-dual element of 𝔽q[x]/(xⁿ+1).
 """
-@auto_hash_equals struct NegacyclicRingDualElement{ ℛ #= ::NegacyclicRing{Field} =#, Field <: PrimeField}
-    data::RingCoeffs{ℛ, Field, OffsetVector{Field, Vector{Field}}}
+@auto_hash_equals struct NegacyclicRingDualElement{ ℛ #= ::NegacyclicRing{Field} =#, Field, Storage <: AbstractVector{Field}}
+    data::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}
 end
-Base.zero(::Type{NegacyclicRingDualElement{ℛ,Field}}) where {ℛ,Field} =
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(OffsetArray(zeros(Field, degree(modulus(ℛ))),0:degree(modulus(ℛ))-1)))
+function NegacyclicRingDualElement{ℛ,Field}(coeffs::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}) where {ℛ,Field,Storage}
+    NegacyclicRingDualElement{ℛ,Field,Storage}(coeffs)
+end
+Base.zero(::Type{NegacyclicRingDualElement{ℛ,Field,Storage}}) where {ℛ,Field,Storage} =
+    NegacyclicRingDualElement(RingCoeffs{ℛ}(OffsetArray(convert(Storage, zeros(Field, degree(modulus(ℛ)))),0:degree(modulus(ℛ))-1)))
 Base.zero(d::NegacyclicRingDualElement) = zero(typeof(d))
 coeffs(e::NegacyclicRingDualElement) = e.data.coeffs
 NegacyclicRingDualElement(ℛ::NegacyclicRing) = NegacyclicRingDualElement{ℛ, eltype(ℛ)}
@@ -134,9 +143,11 @@ for f in (:+, :-)
     for T in (NegacyclicRingElement, NegacyclicRingDualElement)
         @eval function $f(a::$T{ℛ},
                 b::$T{ℛ}) where {ℛ}
-            $T(ℛ)(RingCoeffs{ℛ}(map($f, coeffs(a), coeffs(b))))
+            $T(ℛ)(RingCoeffs{ℛ}(broadcast($f, coeffs(a), coeffs(b))))
         end
-        @eval $f(a::$T{ℛ}) where {ℛ} = $T(RingCoeffs{ℛ}(map($f, coeffs(a))))
+        @eval function $f(a::$T{ℛ}) where {ℛ}
+            $T(RingCoeffs{ℛ}(broadcast($f, coeffs(a))))
+        end
     end
 end
 
