@@ -12,7 +12,7 @@ module CKKS
     using Mods
 
     import GaloisFields: PrimeField
-    import ..Utils: @fields_as_locals, fqmod, plaintext_space
+    import ..Utils: @fields_as_locals, plaintext_space
     import ..ToyFHE: SHEShemeParams, RingSampler, modulus, degree
     export BFVParams
 

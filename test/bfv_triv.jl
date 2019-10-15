@@ -16,8 +16,8 @@ plain = zero(plaintext_space(params))
 plain[0] = 6
 
 c = encrypt(kp, plain)
-@test decrypt(kp, c).p[0] == 6
+@test decrypt(kp, c)[0] == 6
 
 let y = c*c
-    @test decrypt(kp, y).p[0] == 0x24
+    @test decrypt(kp, y)[0] == 0x24
 end

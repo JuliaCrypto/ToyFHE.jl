@@ -14,7 +14,7 @@ plain[0] = 2
 kp1 = ToyFHE.BFV.keygen(params)
 ek = ToyFHE.BFV.keygen(BFV.EvalKey, kp1.priv)
 
-c1 = encrypt(kp1, encoded)
+c1 = encrypt(kp1, plain)
 b1 = BFV.invariant_noise_budget(kp1.priv, c1)
 c1squared = c1*c1
 b2 = BFV.invariant_noise_budget(kp1.priv, c1squared)
