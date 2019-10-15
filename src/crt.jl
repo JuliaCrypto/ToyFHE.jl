@@ -36,6 +36,12 @@ function Base.convert(::Type{Integer}, x::CRTEncoded{<:Any, <:Any, moduli}) wher
     AbstractAlgebra.crt(collect(map(y->BigInt(convert(Integer, y)), x.c)), collect(map(x->BigInt(modulus(x)), fieldtypes(moduli))))
 end
 
+function Base.convert(T::Type{<:CRTEncoded}, x::PrimeField)
+    x = convert(Integer, x)
+    x > modulus(T) && throw(InexactError(:convert, T, x))
+    T(x)
+end
+
 function Base.:+(a::CRTEncoded{T, N, moduli}, b::CRTEncoded{T, N, moduli}) where {T,N,moduli}
     CRTEncoded{T, N, moduli}(a.c .+ b.c)
 end
@@ -72,8 +78,7 @@ end
 
 
 # Integration with NTT
-function NTT.nntt(p::NegacyclicRingElement{ℛ,<:Any,<:Any,<:StructArray{T}})::NegacyclicRingDualElement{ℛ} where {ℛ, T<:CRTEncoded}
-    rcs = p.p.p
+function NTT.nntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} where {ℛ, T<:CRTEncoded, S<:StructArray{T}}
     oa = rcs.coeffs
     sa = oa.parent
     sa′ = StructArray{eltype(sa)}(tuple(map(enumerate(fieldarrays(sa))) do (i,a)
@@ -81,11 +86,10 @@ function NTT.nntt(p::NegacyclicRingElement{ℛ,<:Any,<:Any,<:StructArray{T}})::N
         ℛi = NegacyclicRing{eltype(oai), degree(ℛ)}(ℛ.ψ.c[i])
         nntt(RingCoeffs{ℛi}(oai)).coeffs.parent
     end...))
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(OffsetArray(sa′, axes(oa)...)))
+    RingCoeffs{ℛ}(OffsetArray(sa′, axes(oa)...))
 end
 
-function NTT.inntt(p::NegacyclicRingDualElement{ℛ,<:Any,<:StructArray{T}})::NegacyclicRingElement{ℛ} where {ℛ, T<:CRTEncoded}
-    rcs = p.data
+function NTT.inntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} where {ℛ, T<:CRTEncoded, S<:StructArray{T}}
     oa = rcs.coeffs
     sa = oa.parent
     sa′ = StructArray{eltype(sa)}(tuple(map(enumerate(fieldarrays(sa))) do (i,a)
@@ -93,7 +97,15 @@ function NTT.inntt(p::NegacyclicRingDualElement{ℛ,<:Any,<:StructArray{T}})::Ne
         ℛi = NegacyclicRing{eltype(oai), degree(ℛ)}(ℛ.ψ.c[i])
         inntt(RingCoeffs{ℛi}(oai)).coeffs.parent
     end...))
-    NegacyclicRingElement(RingCoeffs{ℛ}(OffsetArray(sa′, axes(oa)...)))
+    RingCoeffs{ℛ}(OffsetArray(sa′, axes(oa)...))
+end
+
+function NTT.nntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} where {ℛ, T<:CRTEncoded, S<:AbstractArray{T}}
+    error("NNTT methods currently only implemented for CRTEncoded in StructArray format")
+end
+
+function NTT.inntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} where {ℛ, T<:CRTEncoded, S<:AbstractArray{T}}
+    error("NNTT methods currently only implemented for CRTEncoded in StructArray format")
 end
 
 function sample_ring_array(rng::Random.AbstractRNG, ℛ::NegacyclicRing{<:CRTEncoded{T, N, moduli}}, coeff_distribution) where {T,N,moduli}

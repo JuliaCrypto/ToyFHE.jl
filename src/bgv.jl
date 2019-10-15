@@ -67,9 +67,9 @@ module BGV
         dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
         dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
-        a = nntt(rand(rng, dug))
-        s = nntt(rand(rng, dgg))
-        e = nntt(rand(rng, dgg))
+        a = rand(rng, dug)
+        s = rand(rng, dgg)
+        e = rand(rng, dgg)
 
         p = modulus(coefftype(ℛplain))
         b = a*s + e*p
@@ -84,12 +84,12 @@ module BGV
 
         dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
-        v = nntt(rand(rng, dgg))
-        e0 = nntt(rand(rng, dgg))
-        e1 = nntt(rand(rng, dgg))
+        v = rand(rng, dgg)
+        e0 = rand(rng, dgg)
+        e1 = rand(rng, dgg)
 
         p = modulus(coefftype(ℛplain))
-        c0 = b*v + p*e0 + plaintext
+        c0 = b*v + p*e0 + oftype(v, plaintext)
         c1 = a*v + p*e1
         CipherText(params, (c0, c1))
     end
@@ -100,16 +100,15 @@ module BGV
         @fields_as_locals key::PrivKey
         @fields_as_locals params::BGVParams
 
-        b = nntt_hint(c[1])
+        b = c[1]
         spow = s
         for i = 2:length(c)
-            b -= spow*nntt_hint(c[i])
+            b -= spow*c[i]
             spow *= s
         end
 
-        b = inntt_hint(b)
         ℛplain = plaintext_space(params)
-        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(SignedMod(x), modulus(base_ring(ℛplain))))), NTT.coeffs(b)))
+        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(SignedMod(x), modulus(base_ring(ℛplain))))), NTT.coeffs_primal(b)))
     end
     decrypt(kp::KeyPair, plaintext) = decrypt(kp.priv, plaintext)
 

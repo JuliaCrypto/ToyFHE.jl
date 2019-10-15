@@ -8,11 +8,8 @@ params = BFVParams(
     ; eval_mult_count = 3
 )
 
-plain = OffsetArray(zeros(UInt8, ToyFHE.degree(params.ℛ)), 0:ToyFHE.degree(params.ℛ)-1)
+plain = zero(plaintext_space(params))
 plain[0] = 2
-encoded = ToyFHE.NTT.nntt(ToyFHE.NTT.NegacyclicRingElement(
-    ToyFHE.NTT.RingCoeffs{params.ℛ}(map(x->eltype(params.ℛ)(x), plain))
-))
 
 kp1 = ToyFHE.BFV.keygen(params)
 ek = ToyFHE.BFV.keygen(BFV.EvalKey, kp1.priv)

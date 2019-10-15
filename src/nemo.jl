@@ -23,4 +23,4 @@ struct CoeffView <: AbstractVector{Any}
 end
 Base.getindex(p::CoeffView, i::Int) = coeff(p.poly, i)
 Base.axes(p::CoeffView) = (0:p.degree,)
-NTT.coeffs(p::AbstractAlgebra.Generic.Res) = CoeffView(lift(p), degree(modulus(p)))
+NTT.coeffs_primal(p::AbstractAlgebra.Generic.Res) = CoeffView(lift(p), degree(modulus(p)))

@@ -142,10 +142,9 @@ module BFV
         dug = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
         dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
-        a = nntt_hint(rand(rng, dug))
-        s = nntt_hint(rand(rng, dgg))
-
-        e = nntt_hint(rand(rng, dgg))
+        a = rand(rng, dug)
+        s = rand(rng, dgg)
+        e = rand(rng, dgg)
 
         KeyPair(
             PrivKey(params, s),
@@ -164,8 +163,8 @@ module BFV
         evalb = eltype(evala)[]
 
         for i = 1:length(evala)
-            a = nntt_hint(rand(rng, dug))
-            e = nntt_hint(rand(rng, dgg))
+            a = rand(rng, dug)
+            e = rand(rng, dgg)
             push!(evalb, a)
             evala[i] -= a*new.s + e
         end
@@ -180,11 +179,11 @@ module BFV
 
         dgg = RingSampler(ℛ, DiscreteNormal(0, σ))
 
-        u = nntt_hint(rand(rng, dgg))
-        e₁ = nntt_hint(rand(rng, dgg))
-        e₂ = nntt_hint(rand(rng, dgg))
+        u = rand(rng, dgg)
+        e₁ = rand(rng, dgg)
+        e₂ = rand(rng, dgg)
 
-        c₁ = b*u + e₁ + Δ * plaintext
+        c₁ = b*u + e₁ + Δ * oftype(u, ℛplain(plaintext))
         c₂ = a*u + e₂
 
         return CipherText(params, (c₁, c₂))
@@ -212,7 +211,7 @@ module BFV
     multround(e::fmpz, a::Integer, b::fmpz) = multround(BigInt(e), a, BigInt(b))
 
     function multround(e, a::Integer, b)
-        oftype(e, broadcast(NTT.coeffs(e)) do x
+        oftype(e, broadcast(NTT.coeffs_primal(e)) do x
             if isa(x, AbstractAlgebra.Generic.Res{fmpz})
                 multround(BigInt(Nemo.lift(x)), a, b)
             else
@@ -253,7 +252,7 @@ module BFV
     end
 
     function switch(ℛ, e)
-        ℛ(broadcast(NTT.coeffs(e)) do x
+        ℛ(broadcast(NTT.coeffs_primal(e)) do x
             switchel(coefftype(ℛ), x)
         end)
     end
@@ -262,7 +261,7 @@ module BFV
         params = c1.params
         @fields_as_locals params::BFVParams
 
-        modswitch(c) = nntt_hint(switch(ℛbig, inntt_hint(c)))
+        modswitch(c) = switch(ℛbig, c)
         c1 = map(modswitch, c1.cs)
         c2 = map(modswitch, c2.cs)
 
@@ -272,7 +271,7 @@ module BFV
         end
 
         c = map(c) do e
-            switch(ℛ, multround(inntt_hint(e), modulus(base_ring(ℛplain)), modulus(coefftype(ℛ))))
+            switch(ℛ, multround(e, modulus(base_ring(ℛplain)), modulus(coefftype(ℛ))))
         end
 
         CipherText(params, (c...,))
@@ -282,17 +281,16 @@ module BFV
         @fields_as_locals key::PrivKey
         @fields_as_locals params::BFVParams
 
-        b = nntt_hint(c[1])
+        b = c[1]
         spow = s
 
         for i = 2:length(c)
-            b += spow*nntt_hint(c[i])
+            b += spow*c[i]
             spow *= s
         end
 
-        b = inntt_hint(b)
         ℛplain = plaintext_space(params)
-        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(divround(x, Δ), modulus(base_ring(ℛplain))))), NTT.coeffs(b)))
+        ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(divround(x, Δ), modulus(base_ring(ℛplain))))), NTT.coeffs_primal(b)))
     end
     decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
 
@@ -302,15 +300,15 @@ module BFV
         @assert length(c.cs) in (2,3)
         nwindows = ndigits(modulus(coefftype(ℛ)), base=2^relin_window)
 
-        c1 = nntt_hint(c[1])
-        c2 = length(c) == 2 ? zero(c[2]) : nntt_hint(c[2])
+        c1 = c[1]
+        c2 = length(c) == 2 ? zero(c[2]) : c[2]
 
-        cendcoeffs = NTT.coeffs(inntt_hint(c[end]))
+        cendcoeffs = NTT.coeffs_primal(c[end])
         ds = map(cendcoeffs) do x
             digits(x.n, base=2^params.relin_window, pad=nwindows)
         end
         ps = map(1:nwindows) do i
-            nntt_hint(ℛ([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)]))
+            ℛ([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)])
         end
 
         for i in eachindex(a)
@@ -340,15 +338,14 @@ module BFV
         @fields_as_locals pk::PrivKey
         @fields_as_locals params::BFVParams
 
-        b = nntt_hint(c[1])
+        b = c[1]
         spow = s
 
         for i = 2:length(c)
-            b += spow*nntt_hint(c[i])
+            b += spow*c[i]
             spow *= s
         end
 
-        b = inntt_hint(b)
         ℛplain = plaintext_space(params)
 
         function birem(x)
@@ -362,7 +359,7 @@ module BFV
 
         # -log2(2‖v‖) = log(q) - log(t) - 1 - max_i log2(Δ |v_i|)
         log2(modulus(coefftype(ℛ))) - log2(modulus(coefftype(ℛplain))) - 1 -
-            maximum(log2(birem(c.n)) for c in NTT.coeffs(b))
+            maximum(log2(birem(c.n)) for c in NTT.coeffs_primal(b))
     end
     invariant_noise_budget(kp::KeyPair, c::CipherText) =
         invariant_noise_budget(kp.priv, c)

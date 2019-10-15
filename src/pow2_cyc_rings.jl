@@ -16,26 +16,8 @@ import GaloisFields: PrimeField
 import ..ToyFHE: coefftype, modulus, degree
 import Nemo: base_ring
 
-export NegacyclicRing, RingSampler, nntt, inntt, FixedDegreePoly,
-    NegacyclicRingElement, NegacyclicRingDualElement, RingCoeffs, coeffs,
+export NegacyclicRing, RingSampler, nntt, inntt, RingCoeffs, coeffs,
     nntt_hint, inntt_hint
-
-@auto_hash_equals struct FixedDegreePoly{N, T <: AbstractVector}
-    p::T
-    function FixedDegreePoly{N,T}(p::T) where {N, T<:AbstractVector}
-        @assert first(axes(p)[1]) == 0
-        new{N,T}(p)
-    end
-end
-FixedDegreePoly{N}(p::T) where {N, T<:AbstractVector} = FixedDegreePoly{N,T}(p)
-function FixedDegreePoly(p::AbstractVector)
-    @assert first(axes(p)[1]) == 0
-    FixedDegreePoly{length(p), typeof(p)}(p)
-end
-Base.zero(::Type{FixedDegreePoly{N, T}}) where {N, T} =
-    FixedDegreePoly(OffsetArray(zeros(T, N),0:N-1))
-Polynomials.degree(p::FixedDegreePoly{N}) where {N} = N
-Base.getindex(p::FixedDegreePoly, args...) = getindex(p.p, args...)
 
 is_primitive_root(ψ, n) = ψ^n == 1
 
@@ -72,6 +54,117 @@ end
 degree(ℛ::NegacyclicRing{F,N}) where {F,N} = N
 Base.eltype(ℛ::NegacyclicRing{F,N}) where {F,N} = F
 
+function (ℛ::NegacyclicRing)(coeffs::OffsetVector)
+    RingElement{ℛ}(coeffs, nothing)
+end
+(ℛ::NegacyclicRing)(coeffs) = convert(RingElement{ℛ}, coeffs)
+
+
+function Base.zero(ℛ::NegacyclicRing)
+    RingElement{ℛ}(OffsetArray(zeros(eltype(ℛ), degree(ℛ)), 0:degree(ℛ)-1), nothing)
+end
+
+"""
+Represents an element of 𝔽q[x]/(xⁿ+1).
+
+Also optionally caches its dual to efficiently perform multiplicative
+operations.
+"""
+@auto_hash_equals mutable struct RingElement{ℛ #= ::NegacyclicRing{Field} =#, Field, Storage <: AbstractVector{Field}} <: AbstractVector{Field}
+    primal::Union{Nothing, OffsetVector{Field, Storage}}
+    dual::Union{Nothing, OffsetVector{Field, Storage}}
+end
+
+function Base.convert(::Type{<:RingElement{ℛ₁}}, r::RingElement{ℛ₂}) where {ℛ₁, ℛ₂}
+    RingElement{ℛ₁}(map(c->convert(eltype(ℛ₁), c), coeffs_primal(r)), nothing)
+end
+
+function Base.convert(::Type{RingElement{ℛ,Field,Storage}}, primal::OffsetVector{Field, Storage}) where {ℛ, Field, Storage}
+    RingElement{ℛ,Field,Storage}(primal, nothing)
+end
+
+function RingElement{ℛ}(primal::Union{Nothing, OffsetVector{Field, Storage}},
+                        dual::Union{Nothing, OffsetVector{Field, Storage}}) where {ℛ, Field, Storage}
+    @assert primal !== nothing || dual !== nothing
+    RingElement{ℛ,Field,Storage}(primal, dual)
+end
+Base.axes(r::RingElement{ℛ}) where {ℛ} = (Base.IdentityUnitRange(0:degree(ℛ)-1),)
+Base.size(r::RingElement{ℛ}) where {ℛ} = map(length, axes(r))
+Base.zero(r::RingElement{ℛ}) where {ℛ} = RingElement{ℛ}(zero(r.primal), nothing)
+
+function coeffs_primal(r::RingElement{ℛ}) where {ℛ}
+    if r.primal === nothing
+        @assert r.dual !== nothing
+        r.primal = inntt(RingCoeffs{ℛ}(r.dual)).coeffs
+    end
+    return r.primal
+end
+
+function coeffs_dual(r::RingElement{ℛ}) where {ℛ}
+    if r.dual === nothing
+        @assert r.primal !== nothing
+        r.dual = nntt(RingCoeffs{ℛ}(r.primal)).coeffs
+    end
+    return r.dual
+end
+
+Base.getindex(r::RingElement, idxs...) = getindex(coeffs_primal(r), idxs...)
+function Base.setindex!(r::RingElement, v, idxs...)
+    ret = setindex!(coeffs_primal(r), v, idxs...)
+    r.dual = nothing
+    ret
+end
+
+function *(a::RingElement{ℛ}, b::RingElement{ℛ}) where {ℛ}
+    RingElement{ℛ}(nothing, coeffs_dual(a) .* coeffs_dual(b))
+end
+
+const RingScalar = Union{Integer, PrimeField}
+function *(a::RingScalar, b::RingElement{ℛ}) where {ℛ}
+    RingElement{ℛ}(b.primal === nothing ? nothing : a .* b.primal,
+                    b.dual === nothing ? nothing : a .* b.dual)
+end
+*(a::RingElement{ℛ}, b::RingScalar) where {ℛ} = b*a
+
+function -(a::RingElement{ℛ}) where {ℛ}
+    RingElement{ℛ}(a.primal === nothing ? nothing : -a.primal,
+                    a.dual === nothing ? nothing : -a.dual)
+end
+
+for f in (:+, :-)
+    @eval function ($f)(a::RingElement{ℛ}, b::RingElement{ℛ}) where {ℛ}
+        # If both have both primal and dual set, we sum both (we sort of
+        # expect a higher order compiler to remove any unnecessary computation,
+        # though julia doesn't currently do that). If only one of them is set in
+        # each, we do that.
+        new_primal = new_dual = nothing
+        if a.primal !== nothing && b.primal !== nothing
+            new_primal = broadcast($f, a.primal, b.primal)
+        end
+        if a.dual !== nothing && b.dual !== nothing
+            new_dual = broadcast($f, a.dual, b.dual)
+        end
+        if new_primal === nothing && new_dual === nothing
+            if a.primal === nothing
+                new_primal = broadcast($f, coeffs_primal(a), b.primal)
+            else
+                new_primal = broadcast($f, a.primal, coeffs_primal(b))
+            end
+            if a.dual === nothing
+                new_dual = broadcast($f, coeffs_dual(a), b.dual)
+            else
+                new_dual = broadcast($f, a.dual, coeffs_dual(b))
+            end
+        end
+        RingElement{ℛ}(new_primal, new_dual)
+    end
+end
+
+function ^(x::RingElement, n::Integer)
+    @assert n >= 0
+    Base.power_by_squaring(x,n)
+end
+
 @auto_hash_equals struct RingCoeffs{ℛ, Field, T<:AbstractVector{Field}} <: AbstractVector{Field}
     coeffs::T
 end
@@ -81,76 +174,8 @@ Base.copy(r::RingCoeffs{ℛ,F,T}) where {ℛ,F,T} = RingCoeffs{ℛ,F,T}(copy(r.c
 RingCoeffs{ℛ}(r::RingCoeffs{ℛ}) where {ℛ} = copy(r)
 Base.axes(r::RingCoeffs) = axes(r.coeffs)
 Base.size(r::RingCoeffs) = size(r.coeffs)
-Base.getindex(r::RingCoeffs, idxs...) = getindex(r.coeffs, idxs...)
 
-"""
-Represents an element of 𝔽q[x]/(xⁿ+1).
-"""
-@auto_hash_equals struct NegacyclicRingElement{ℛ #= ::NegacyclicRing{Field} =#, Field,  N, Storage <: AbstractVector{Field}}
-    p::FixedDegreePoly{N, RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}}
-end
-function NegacyclicRingElement{ℛ,Field,N}(coeffs::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}) where {ℛ,Field,N,Storage}
-    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(coeffs))
-end
-function NegacyclicRingElement{ℛ,Field,N}(coeffs::AbstractVector) where {ℛ,Field,  N}
-    Storage = isa(coeffs, OffsetVector) ? typeof(parent(coeffs)) : coeffs
-    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
-end
-Base.convert(::Type{NegacyclicRingElement{ℛ,Field,N,Storage}}, coeffs::OffsetVector{Field, Storage}) where {ℛ, Field, N, Storage} =
-    NegacyclicRingElement{ℛ,Field,N,Storage}(FixedDegreePoly(RingCoeffs{ℛ}(coeffs)))
-coeffs(e::NegacyclicRingElement) = e.p.p.coeffs
-NegacyclicRingElement(ℛ::NegacyclicRing) = NegacyclicRingElement{ℛ, eltype(ℛ), degree(modulus(ℛ))}
-NegacyclicRingElement(coeffs::RingCoeffs{ℛ}) where {ℛ} = NegacyclicRingElement(ℛ)(coeffs)
-Base.zero(::Type{NegacyclicRingElement{ℛ,Field,N}}) where {ℛ,Field,N} =
-    NegacyclicRingElement{ℛ,Field,N}(zero(FixedDegreePoly{N, Field}))
-
-(ℛ::NegacyclicRing)(coeffs) = NegacyclicRingElement(ℛ)(coeffs)
-
-"""
-Represents an ntt-dual element of 𝔽q[x]/(xⁿ+1).
-"""
-@auto_hash_equals struct NegacyclicRingDualElement{ ℛ #= ::NegacyclicRing{Field} =#, Field, Storage <: AbstractVector{Field}}
-    data::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}
-end
-function NegacyclicRingDualElement{ℛ,Field}(coeffs::RingCoeffs{ℛ, Field, OffsetVector{Field, Storage}}) where {ℛ,Field,Storage}
-    NegacyclicRingDualElement{ℛ,Field,Storage}(coeffs)
-end
-Base.zero(::Type{NegacyclicRingDualElement{ℛ,Field,Storage}}) where {ℛ,Field,Storage} =
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(OffsetArray(convert(Storage, zeros(Field, degree(modulus(ℛ)))),0:degree(modulus(ℛ))-1)))
-Base.zero(d::NegacyclicRingDualElement) = zero(typeof(d))
-coeffs(e::NegacyclicRingDualElement) = e.data.coeffs
-NegacyclicRingDualElement(ℛ::NegacyclicRing) = NegacyclicRingDualElement{ℛ, eltype(ℛ)}
-
-function *(a::NegacyclicRingDualElement{ℛ},
-           b::NegacyclicRingDualElement{ℛ}) where {ℛ}
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(coeffs(a) .* coeffs(b)))
-end
-function *(a::NegacyclicRingDualElement{ℛ},
-           b::Union{Integer, PrimeField}) where {ℛ}
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(coeffs(a) * b))
-end
-function *(a::Union{Integer, PrimeField},
-           b::NegacyclicRingDualElement{ℛ}) where {ℛ}
-    NegacyclicRingDualElement(RingCoeffs{ℛ}(a * coeffs(b)))
-end
-function ^(x::NegacyclicRingDualElement, n::Integer)
-    @assert n >= 0
-    Base.power_by_squaring(x,n)
-end
-
-
-for f in (:+, :-)
-    for T in (NegacyclicRingElement, NegacyclicRingDualElement)
-        @eval function $f(a::$T{ℛ},
-                b::$T{ℛ}) where {ℛ}
-            $T(ℛ)(RingCoeffs{ℛ}(broadcast($f, coeffs(a), coeffs(b))))
-        end
-        @eval function $f(a::$T{ℛ}) where {ℛ}
-            $T(RingCoeffs{ℛ}(broadcast($f, coeffs(a))))
-        end
-    end
-end
-
+# Negacyclic Numbertheortic transform (i.e. FFT over finite fields)
 using FourierTransforms: NontwiddleKernelStep, TwiddleKernelStep, fftgen, CTPlan
 @generated function FourierTransforms.applystep(ns::NontwiddleKernelStep{T,N,forward},
     vn::Integer,
@@ -191,11 +216,6 @@ end
     end
 end
 
-function LinearAlgebra.mul!(y::NegacyclicRingDualElement{ℛ}, p::CTPlan{T}, x::NegacyclicRingElement{ℛ}) where {T, ℛ}
-    @assert p.n == length(y.data) == degree(ℛ)
-    FourierTransforms.applystep(p, x, 0, 1, y, 0, 1, 1)
-    return y
-end
 
 """
 Perform a negacyclic on the coefficient vector of
@@ -224,10 +244,6 @@ function nntt(c::RingCoeffs{ℛ})::RingCoeffs{ℛ} where {ℛ}
     c̃
 end
 
-function nntt(p::NegacyclicRingElement{ℛ})::NegacyclicRingDualElement{ℛ} where {ℛ}
-    NegacyclicRingDualElement(nntt(p.p.p))
-end
-
 """
 Computes the inverse of nntt(p).
 """
@@ -242,15 +258,5 @@ function inntt(c̃::RingCoeffs{ℛ})::RingCoeffs{ℛ} where {ℛ}
     n⁻¹ = inv(eltype(ℛ)(degree(modulus(ℛ))))
     RingCoeffs{ℛ}([x * n⁻¹ * ψ⁻¹^i for (i, x) in pairs(c.coeffs)])
 end
-
-function inntt(p̃::NegacyclicRingDualElement{ℛ})::NegacyclicRingElement{ℛ} where {ℛ}
-    NegacyclicRingElement(inntt(p̃.data))
-end
-
-# Hints
-nntt_hint(r) = r
-nntt_hint(r::NegacyclicRingElement) = nntt(r)
-inntt_hint(r) = r
-inntt_hint(r::NegacyclicRingDualElement) = inntt(r)
 
 end

@@ -26,7 +26,11 @@ include("bgv.jl")
 include("bfv.jl")
 include("ckks.jl")
 include("nemo.jl")
+include("encoding.jl")
 include("crt.jl")
+
+import .Utils: plaintext_space
+export plaintext_space
 
 if VERSION < v"1.4.0-DEV.208"
     include("div_hacks.jl")

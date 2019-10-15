@@ -3,6 +3,7 @@ using Hecke
 using ToyFHE
 using ToyFHE.BFV
 using Primes
+using Test
 
 const n_plaintext_slots = 3
 const plaintext_modulus = 256

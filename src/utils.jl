@@ -12,6 +12,7 @@ using Primes
 using Mods
 using StructArrays
 using OffsetArrays
+using BitIntegers
 
 macro fields_as_locals(a)
     @assert isexpr(a, :(::))
@@ -61,5 +62,18 @@ Base.convert(::Type{Integer}, x::AbstractAlgebra.Generic.Res{fmpz}) = Nemo.lift(
 # Hack
 Base.div(a::Nemo.fmpz, b::BigInt, r::RoundingMode{:NearestTiesAway}) =
     div(BigInt(a), b, r)
+
+# Hack
+function Base.convert(T::Type{<:PrimeField}, x::PrimeField)
+    x = convert(Integer, x)
+    x > modulus(T) && throw(InexactError(:convert, T, x))
+    T(x)
+end
+
+# Hack
+Primes.isprime(x::Int256) = Primes.isprime(big(x))
+
+# Hack
+(::NmodPolyRing)(x::AbstractAlgebra.Generic.Res{fmpz_mod_poly}) = x
 
 end
