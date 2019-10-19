@@ -1,6 +1,6 @@
 module ToyFHE
 
-export encrypt, decrypt, keygen
+export encrypt, decrypt, keygen, PolyCRTEncoding
 
 abstract type SHEShemeParams end
 
@@ -20,6 +20,7 @@ include("poly.jl")
 include("signedmod.jl")
 include("pow2_cyc_rings.jl")
 using .NTT
+export NegacyclicRing
 include("utils.jl")
 include("cryptparams.jl")
 include("bgv.jl")
@@ -27,6 +28,7 @@ include("bfv.jl")
 include("ckks.jl")
 include("nemo.jl")
 include("encoding.jl")
+include("polycrtencoding.jl")
 include("crt.jl")
 
 import .Utils: plaintext_space

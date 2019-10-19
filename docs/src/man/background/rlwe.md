@@ -1,10 +1,10 @@
-# Ring LWE and arithmetic over the cyclotomic ring of integers mod q
+# Ring LWE and ℛq
 
 ## The ring of m-th cyclotomic integers mod q
 
 All schemes implemented by this package make use of the RLWE setting.
 In particular, the security assumption underlying the protocols is the general
-(Ring Learning With Errors)[https://en.wikipedia.org/wiki/Ring_learning_with_errors]
+[Ring Learning With Errors](https://en.wikipedia.org/wiki/Ring_learning_with_errors)
 problem and the primary mathematical object of interest is the ring
 
 ```math
@@ -13,8 +13,8 @@ problem and the primary mathematical object of interest is the ring
 
 where $\Phi_m$ is the m-th cyclotomic polynomial. In particular, we may represent
 this ring as polynomials with coefficients in ``\mathbb{Z}/q \mathbb{Z}``, of
-degree less than ``n = deg(\Phi_m(x)) = \phi(m)`` where ``\phi`` is the Euler [`totient`](@ref Primes.totient) function. Alternatively we may thing of `\mathscr{R}_q` as the
-m-th cyclotomic ring of integers ``\mathscr{R} = \mathbb{Z} / \Phi_m(x)`` mod ``q``.
+degree less than ``n = deg(\Phi_m(x)) = \phi(m)`` where ``\phi`` is the Euler [`totient`](@ref Primes.totient) function. Alternatively we may think of ``\mathscr{R}_q`` as the residue ring mod q of the
+m-th cyclotomic ring of integers ``\mathscr{R} = \mathbb{Z} / \Phi_m(x)``.
 We shall call ``q`` the ciphertext modulus, and ``n`` the ring dimension. In
 general we will take the ciphertext modulus to be a large prime or a product of
 somewhat large primes (the correctness of the crytopgraphic scheme depends on
@@ -24,7 +24,7 @@ sufficiently large).
 This definition may seem a bit abstract at first, but since it is the primary
 mathematical object of interest, it is import that we get acquianted with it a
 bit. Luckily for us, it is quite easy to play with these definitions using
-the (Nemo.jl)[https://github.com/Nemocas/Nemo.jl] stack of packages:
+the [Nemo.jl](https://github.com/Nemocas/Nemo.jl) stack of packages:
 
 ```jldoctest
 using Nemo
@@ -57,8 +57,7 @@ using Nemo
 
 There are two practical observations worth taking away from this exercise.
 
-    1. The degree of the m-th cyclotomic polynomial is indeed given by the Euler
-       totient function:
+1. The degree of the m-th cyclotomic polynomial is indeed given by the Euler totient function:
 
 ```jldoctest
 using Primes
@@ -81,9 +80,7 @@ using Primes
  4
 ```
 
-    2. When ``m`` is a power of two, the polynomial will have the form ``x^{m/2} + 1``.
-       This holds generally, but let's just do the first couple of powers of two
-       as examples:
+2. When ``m`` is a power of two, the polynomial will have the form ``x^{m/2} + 1``. This holds generally, but let's just do the first couple of powers of two as examples:
 
 ```jldoctest
 julia> [Φ(2^i, x) for i = 1:13]

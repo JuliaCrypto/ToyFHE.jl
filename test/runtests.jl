@@ -8,6 +8,9 @@ include("bgv_triv.jl")
 # BFV with p=65537 SIMD over cyclotomic ring
 include("bfv_simd.jl")
 
+# No encryption, just thest the PolyCRT encoding code
+include("polycrt_encoding.jl")
+
 # BFV with p=256 SIMD over non-cyclotomic ring
 include("bfv_uint8.jl")
 

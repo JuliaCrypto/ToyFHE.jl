@@ -31,9 +31,19 @@ struct NegacyclicRing{BaseRing, N}
         @assert is_primitive_root(ψ, 2N)
         new{BaseRing, N}(ψ)
     end
-    function NegacyclicRing{BaseRing, N}() where {BaseRing, N}
+    function NegacyclicRing{BaseRing, N}(::Nothing) where {BaseRing, N}
         new{BaseRing, N}(zero(BaseRing))
     end
+end
+function NegacyclicRing{BaseRing, N}() where {BaseRing <: PrimeField, N}
+    if gcd(char(BaseRing) - 1, 2N) == 2N
+        NegacyclicRing{BaseRing, N}(GaloisFields.minimal_primitive_root(BaseRing, 2N))
+    else
+        NegacyclicRing{BaseRing, N}(nothing)
+    end
+end
+function NegacyclicRing{BaseRing, N}() where {BaseRing, N}
+    NegacyclicRing{BaseRing, N}(nothing)
 end
 base_ring(R::NegacyclicRing{F}) where {F} = F
 coefftype(::Type{NegacyclicRing{F}}) where {F} = F
@@ -115,8 +125,32 @@ function Base.setindex!(r::RingElement, v, idxs...)
     ret
 end
 
+function ring_multiply(ℛ::NegacyclicRing{BaseRing}, a::RingElement, b::RingElement) where BaseRing
+    # TODO: This should ideally use dispatch
+    # https://github.com/JuliaLang/julia/issues/33387
+    if iszero(ℛ.ψ)
+        # Do the naive convolution. This is just for plaintexts and
+        # testing.
+        ca = coeffs_primal(a)
+        cb = coeffs_primal(b)
+        res = zero(ca)
+        N = lastindex(ca)
+        for (i, j) in Iterators.product(eachindex(ca), eachindex(cb))
+            idx = i+j
+            if idx <= N
+                res[idx] += ca[i] * cb[j]
+            else
+                res[idx-N] -= ca[i] * cb[j]
+            end
+        end
+        return RingElement{ℛ}(res, nothing)
+    else
+        return RingElement{ℛ}(nothing, coeffs_dual(a) .* coeffs_dual(b))
+    end
+end
+
 function *(a::RingElement{ℛ}, b::RingElement{ℛ}) where {ℛ}
-    RingElement{ℛ}(nothing, coeffs_dual(a) .* coeffs_dual(b))
+    ring_multiply(ℛ, a, b)
 end
 
 const RingScalar = Union{Integer, PrimeField}

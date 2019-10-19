@@ -11,5 +11,5 @@ literature.)
 
 ```@contents
 Pages = ["background/rlwe.md", "background/fhe.md"]
-Depth = 1
+Depth = 2
 ```

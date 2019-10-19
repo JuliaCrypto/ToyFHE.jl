@@ -54,5 +54,5 @@ Pages = [
     "man/encoding.md",
     "man/ckks.md"
 ]
-Depth = 1
+Depth = 2
 ```
