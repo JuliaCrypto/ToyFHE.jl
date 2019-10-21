@@ -2,9 +2,11 @@
 
 [[AbstractAlgebra]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "e1f0be8eeee8f842b0fcd9df5e6545c2d81b1d17"
+git-tree-sha1 = "72f193111317500e7bb526a19a9bacd0e576e4b7"
+repo-rev = "master"
+repo-url = "https://github.com/Nemocas/AbstractAlgebra.jl.git"
 uuid = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
-version = "0.6.0"
+version = "0.7.1"
 
 [[AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -131,9 +133,9 @@ version = "0.8.6"
 
 [[Hecke]]
 deps = ["AbstractAlgebra", "Distributed", "InteractiveUtils", "Libdl", "LinearAlgebra", "Markdown", "Nemo", "Pkg", "Printf", "Profile", "Random", "Requires", "Serialization", "SparseArrays", "Test"]
-git-tree-sha1 = "a192aafceae8f2e9411fb61a0cb375394f2a3e5f"
-repo-rev = "kf/discard"
-repo-url = "https://github.com/Keno/Hecke.jl.git"
+git-tree-sha1 = "48e23a38fa533cf4f8baf2cfca74225c74cb2678"
+repo-rev = "kf/discard2"
+repo-url = "https://github.com/Keno/Hecke.jl"
 uuid = "3e1990a7-5d81-5526-99ce-9ba3ff248f21"
 version = "0.6.5"
 
@@ -200,11 +202,11 @@ version = "0.1.0"
 
 [[Nemo]]
 deps = ["AbstractAlgebra", "BinaryProvider", "InteractiveUtils", "Libdl", "LinearAlgebra", "Markdown", "Random", "Test"]
-git-tree-sha1 = "a55627cddf52399c61615395679d1d6d6e4cbbcd"
-repo-rev = "kf/discard"
-repo-url = "https://github.com/Keno/Nemo.jl"
+git-tree-sha1 = "16b8d5c5a4f4f5dc40774abece0a673273ccce85"
+repo-rev = "master"
+repo-url = "https://github.com/Nemocas/Nemo.jl.git"
 uuid = "2edaba10-b0f1-5616-af89-8c11ac63239a"
-version = "0.14.3"
+version = "0.15.1"
 
 [[OffsetArrays]]
 git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"

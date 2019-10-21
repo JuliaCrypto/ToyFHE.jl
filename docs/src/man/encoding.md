@@ -132,8 +132,16 @@ in a SIMD manner. Of course we may also use any subfields of this factorization,
 and in particular we may use the subfield ``\mathbb{F}_2`` if we want to
 perform binary arithmetic.
 
-In summary: We get one copy of ``\mathbb{F}_{p^r}`` for every *distinct* irreducible
+In summary: We get one copy of ``\mathbb{F}_{p^d}`` for every *distinct* irreducible
 factor of ``\Phi_m(x)`` over ``\mathbb{F}_p``.
+
+!!! note
+
+    The field ``\mathbb{F}_{p^r}`` and the ring ``\mathbb{Z}/p^r \mathbb{Z}`` are
+    different. The latter may be of interest when emulating arithmetic such as
+    `UInt8` with overflow semantics matching that of standard Julia (i.e. the
+    standard Julia UInt8 type is equivalent to ``\mathbb{Z}/256 \mathbb{Z}``).
+    We shall see how to construct an encoding for such a ring in the next section.
 
 The `PolyCRTEncoding` type knows how to perform these isomorphisms and will
 automatically apply them when possible:
@@ -156,7 +164,7 @@ p = convert(ℛ, plain)
 xp^4+xp^3+xp^2+xp
 ```
 
-An of course as before it works the inverse way also:
+And of course as before it works the inverse way also:
 ```jldoctest
 julia> PolyCRTEncoding(ℛ(xp^4+xp^3+xp^2+xp))
 2-element PolyCRTEncoding{𝔽₈}:
@@ -166,4 +174,75 @@ julia> PolyCRTEncoding(ℛ(xp^4+xp^3+xp^2+xp))
 
 ### SIMD Encoding from Hensel lifting
 
-### SIMD Summary
+In the previous subsection, we saw how to encode values in extension fields of
+the finite field ``\mathbb{F}_p``. In this section, we shall see how to SIMD
+encode plaintext values from the ring ``\mathbb{Z}/p^r \mathbb{Z}`` using
+[Hensel Lifting](@ref hensel-lifting). The key fact of Hensel's lemma is that
+we may "lift" a factorization of ``f`` over ``\mathbb{F}_p`` to a factorization
+over the larger ring ``\mathbb{Z}/p^r \mathbb{Z}`` (in this case for ``p=2``, ``r=8``, ``p^r=256``)
+```jldoctest
+julia> factors = collect(keys(Hecke.factor_mod_pk(Φ(7, x), 2, 8)))
+2-element Array{fmpz_poly,1}:
+ x^3-90*x^2-91*x-1
+ x^3+91*x^2+90*x-1
+```
+
+which is the lift of the factorization we know from before:
+
+```jldoctest
+julia> ℤpx.(factors)
+2-element Array{nmod_poly,1}:
+ x^3+x+1
+ x^3+x^2+1
+```
+
+The CRT encoding works much the same way:
+```jldoctest
+ℤpkx = ResidueRing(ZZ, 256)["x"][1]
+encoded = AbstractAlgebra.crt(ℤpkx.(Int.([0x10, 0x20])), ℤpkx.(factors))
+
+# output
+48*x^4+48*x^2+48*x+48
+```
+
+```jldoctest
+julia> mod(encoded, ℤpkx(factors[1]))
+16
+
+julia> mod(encoded, ℤpkx(factors[2]))
+32
+```
+
+Of course, as before, the `PolyCRTEncoding` type will perform all this work
+automatically:
+
+```jldoctest
+const ℤ = Nemo.ZZ
+const ℤx, x = ℤ["x"]
+const ℤpx, xp = ResidueRing(ℤ, 256)["xp"]
+ℛ = ResidueRing(ℤpx, cyclotomic(7, x))
+
+plain = PolyCRTEncoding(zero(ℛ))
+
+plain[1] = 0x10
+plain[2] = 0x20
+
+p = convert(ℛ, plain)
+
+# output
+48*xp^4+48*xp^2+48*xp+48
+```
+
+## Encoding Summary
+
+While each of the three SIMD approaches outlined above is an example of the same
+underlying mathematical principle, they have fastly different performance
+characteristics and supported parameter ranges. The following table provides a
+summary:
+
+| Method      | Plaintext Space     | Number of Slots | Parameter Constraints                                  |
+|-------------|---------------------|-----------------|--------------------------------------------------------|
+| NTT         | ``\mathbb{Z}/p``    | 1               | None                                                   |
+| SIMD NTT    | ``\mathbb{F}_p``    | ``n``           | ``p`` prime, ``gcd(p-1,2n)==2n``                       |
+| Generic CRT | ``\mathbb{F}_{p^d}``| ``l``           | p prime, ``\phi_m(n)=l*d``, ``\Phi_m`` factors over ``\mathbb{F}_p`` |
+| + Hensel    | ``\mathbb{Z}_{p^k}[x]/f_i(x)`` | ``l``| p prime, ``\phi_m(n)=l*d``, ``\Phi_m`` factors over ``\mathbb{F}_p`` |

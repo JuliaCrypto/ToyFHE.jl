@@ -10,7 +10,7 @@ function (R::AbstractAlgebra.Generic.ResRing{T})(o::OffsetVector) where T<:Union
     @assert first(axes(o)[1]) == 0
     R(base_ring(R)(collect(o)))
 end
-Base.oftype(x::AbstractAlgebra.Generic.Res, y) = parent(x)(y)
+Base.oftype(x::AbstractAlgebra.Generic.Res, y::AbstractArray) = parent(x)(y)
 function (R::NmodPolyRing)(o::OffsetVector)
     @assert first(axes(o)[1]) == 0
     R(collect(o))

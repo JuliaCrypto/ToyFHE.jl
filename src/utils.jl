@@ -13,6 +13,7 @@ using Mods
 using StructArrays
 using OffsetArrays
 using BitIntegers
+using Hecke
 
 macro fields_as_locals(a)
     @assert isexpr(a, :(::))
@@ -27,7 +28,11 @@ macro fields_as_locals(a)
 end
 
 
-plaintext_space(r::ResRing, p) = PolynomialRing(ResidueRing(Nemo.ZZ, p), "x")[1]
+function plaintext_space(r::ResRing, p)
+    ℤp = ResidueRing(Nemo.ZZ, p)
+    ℤpx = PolynomialRing(ℤp, "x")[1]
+    ResidueRing(ℤpx, Nemo.lift(Nemo.ZZ["x"][1], modulus(r)))
+end
 function plaintext_space(r::NegacyclicRing, p)
     coefft = Primes.isprime(p) ? GaloisField(p) :
         p == 256 ? UInt8 :
@@ -75,5 +80,23 @@ Primes.isprime(x::Int256) = Primes.isprime(big(x))
 
 # Hack
 (::NmodPolyRing)(x::AbstractAlgebra.Generic.Res{fmpz_mod_poly}) = x
+
+# Hack
+Base.gcdx(x::nmod_poly, y::nmod_poly) = Hecke.rresx(x, y)
+
+# Hack
+Nemo.nmod_poly(a::Integer, b::Integer) = Nemo.nmod_poly(UInt64(a), UInt64(b))
+
+# Hack (https://github.com/Nemocas/Nemo.jl/issues/668)
+function (a::FqNmodFiniteField)(b::Nemo.nmod)
+    a(data(b))
+end
+
+# Hack
+function Base.oftype(R::AbstractAlgebra.Generic.Res{fmpz_mod_poly}, e::AbstractAlgebra.Generic.Res{nmod_poly})
+    ℤx = Nemo.ZZ["x"][1]
+    @assert Nemo.lift(ℤx, modulus(parent(R))) == Nemo.lift(ℤx, modulus(parent(e)))
+    parent(R)(Nemo.lift(ℤx, data(e)))
+end
 
 end
