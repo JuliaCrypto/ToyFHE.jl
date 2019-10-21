@@ -8,6 +8,7 @@ struct RingSampler{Ring} <: Random.Sampler{Ring}
     ring::Ring
     coeff_distribution::Any #DiscreteUnivariateDistribution
 end
+Random.gentype(r::RingSampler) = Any
 ring(r::RingSampler) = r.ring
 
 function sample_ring_array(rng, ℛ, coeff_distribution)

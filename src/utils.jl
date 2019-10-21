@@ -27,26 +27,6 @@ macro fields_as_locals(a)
     end
 end
 
-
-function plaintext_space(r::ResRing, p)
-    ℤp = ResidueRing(Nemo.ZZ, p)
-    ℤpx = PolynomialRing(ℤp, "x")[1]
-    ResidueRing(ℤpx, Nemo.lift(Nemo.ZZ["x"][1], modulus(r)))
-end
-function plaintext_space(r::NegacyclicRing, p)
-    coefft = Primes.isprime(p) ? GaloisField(p) :
-        p == 256 ? UInt8 :
-        Mod(p)
-    if Primes.isprime(p) && p > 2degree(modulus(r))
-        # TODO: Also needs to check here if the prime admits 2n-th roots of
-        # unities.
-        NegacyclicRing{coefft, degree(modulus(r))}(
-            GaloisFields.minimal_primitive_root(coefft, 2degree(modulus(r))))
-    else
-        NegacyclicRing{coefft, degree(modulus(r))}()
-    end
-end
-
 # HACK - DiscreteUniform is the default for types, but it'd be nice to
 # allow this.
 Distributions.DiscreteUniform(T::Type) = T
@@ -98,5 +78,12 @@ function Base.oftype(R::AbstractAlgebra.Generic.Res{fmpz_mod_poly}, e::AbstractA
     @assert Nemo.lift(ℤx, modulus(parent(R))) == Nemo.lift(ℤx, modulus(parent(e)))
     parent(R)(Nemo.lift(ℤx, data(e)))
 end
+
+struct UsageError
+    msg::String
+end
+
+# For now
+Base.widen(::Type{Int128}) = Int256
 
 end

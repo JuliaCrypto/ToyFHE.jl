@@ -1,20 +1,16 @@
 module ToyFHE
 
-export encrypt, decrypt, keygen, PolyCRTEncoding
-
-abstract type SHEShemeParams end
+export encrypt, decrypt, keygen, keyswitch, PolyCRTEncoding
+export BFVParams, BGVParams, CKKSParams
+export PubKey, PrivKey, EvalKey, KeyPair
 
 using Random
-
-# For now
+using Distributions
+using Nemo
+using Hecke
+using GaloisFields
+using Mods
 using BitIntegers
-Base.widen(::Type{Int128}) = Int256
-
-# TODO: CSPRNG here
-keygen(params::SHEShemeParams) = keygen(Random.GLOBAL_RNG, params)
-
-function encrypt end
-function decrypt end
 
 include("poly.jl")
 include("signedmod.jl")
@@ -22,6 +18,8 @@ include("pow2_cyc_rings.jl")
 using .NTT
 export NegacyclicRing
 include("utils.jl")
+using .Utils: @fields_as_locals
+include("rlwe_she.jl")
 include("cryptparams.jl")
 include("bgv.jl")
 include("bfv.jl")

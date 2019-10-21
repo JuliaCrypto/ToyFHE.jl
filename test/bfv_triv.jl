@@ -1,5 +1,4 @@
 using ToyFHE
-using ToyFHE.BFV
 using OffsetArrays
 using Test
 
@@ -10,7 +9,7 @@ params = BFVParams(
     # We need to validate the parameter selection elsewhere
     ; eval_mult_count = 2
 )
-kp = ToyFHE.BFV.keygen(params)
+kp = keygen(params)
 
 plain = zero(plaintext_space(params))
 plain[0] = 6

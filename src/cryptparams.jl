@@ -1,8 +1,7 @@
 """
     R-LWE is performed over rings of the form ℛ = 𝔽q[x]/Φₘ(x)
     where Φₘ (Φ_m) is the m-th cyclotomic polynomial (the security of RLWE
-    relies on cyclotomicity). In practical implementations, for each of
-    computation, we choose m such that Φₘ(x) = xⁿ+1.
+    relies on cyclotomicity).
 
     This module consists of various standard parameter choices to match
     other popular libraries and standards.

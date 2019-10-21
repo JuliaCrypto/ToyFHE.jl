@@ -1,5 +1,4 @@
 using ToyFHE
-using ToyFHE.BGV
 using GaloisFields
 using OffsetArrays
 using Test
@@ -9,7 +8,7 @@ params = BGVParams(
     256,
     8/√(2π)
 )
-kp = ToyFHE.BGV.keygen(params)
+kp = keygen(params)
 
 plain = zero(plaintext_space(params))
 plain[0] = 6

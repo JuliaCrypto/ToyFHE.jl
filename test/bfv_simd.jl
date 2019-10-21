@@ -1,6 +1,5 @@
 using ToyFHE
 using ToyFHE: degree
-using ToyFHE.BFV
 using ToyFHE.NTT
 using GaloisFields
 using OffsetArrays
@@ -12,7 +11,7 @@ params = BFVParams(
     65537, # plaintext modulus
     ; eval_mult_count = 1
 )
-kp = ToyFHE.BFV.keygen(params)
+kp = keygen(params)
 
 plain = SlotEncoding(zero(plaintext_space(params)))
 plain[0] = 1

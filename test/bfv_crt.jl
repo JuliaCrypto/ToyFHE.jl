@@ -1,5 +1,4 @@
 using ToyFHE
-using ToyFHE.BFV
 using OffsetArrays
 using Test
 using GaloisFields
@@ -25,7 +24,7 @@ p6 = nextprime(p5+2n, 1; interval=2n)
     ToyFHE.NegacyclicRing{CT, n}(ζ₄₀₉₆)
 end
 
-ℛplain = ToyFHE.BFV.plaintext_space(ℛ, 53)
+ℛplain = plaintext_space(ℛ, 53)
 
 params = BFVParams(
     ℛ,
@@ -35,7 +34,7 @@ params = BFVParams(
     3.2,
     div(ToyFHE.NTT.modulus(ToyFHE.NTT.coefftype(ℛ)), ToyFHE.NTT.modulus(ToyFHE.NTT.coefftype(ℛplain)))
 )
-kp = ToyFHE.BFV.keygen(params)
+kp = keygen(params)
 
 plain = zero(plaintext_space(params))
 plain[0] = 6

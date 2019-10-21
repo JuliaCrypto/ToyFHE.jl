@@ -1,7 +1,6 @@
 using Nemo
 using Hecke
 using ToyFHE
-using ToyFHE.BFV
 using Primes
 using Test
 
@@ -40,13 +39,13 @@ q = nextprime(big(2)^51)
 params = BFVParams(
     ℛ,
     ℛbig,
-    BFV.plaintext_space(ℛ, plaintext_modulus),
+    plaintext_space(ℛ, plaintext_modulus),
     1,
     8/√(2π),
     div(q, plaintext_modulus)
 )
 
-kp = ToyFHE.BFV.keygen(params)
+kp = keygen(params)
 
 plain = PolyCRTEncoding(zero(plaintext_space(params)))
 plain[:] .= [1, 2, 3, 4, 5, 6]

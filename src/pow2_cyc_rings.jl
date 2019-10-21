@@ -68,7 +68,7 @@ function (ℛ::NegacyclicRing)(coeffs::OffsetVector)
     RingElement{ℛ}(coeffs, nothing)
 end
 (ℛ::NegacyclicRing)(coeffs) = convert(RingElement{ℛ}, coeffs)
-
+Base.convert(ℛ::NegacyclicRing, coeffs) = ℛ(coeffs)
 
 function Base.zero(ℛ::NegacyclicRing)
     RingElement{ℛ}(OffsetArray(zeros(eltype(ℛ), degree(ℛ)), 0:degree(ℛ)-1), nothing)
