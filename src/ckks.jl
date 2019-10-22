@@ -20,11 +20,7 @@ scheme_name(p::Type{CKKSParams}) = "CKKS"
 ℛ_cipher(p::CKKSParams) = p.ℛ
 
 π⁻¹(params::CKKSParams, plaintext) = params.ℛ(plaintext)
-
-function π(params::CKKSParams, b)
-    @fields_as_locals params::CKKSParams
-    ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(divround(x, Δ), modulus(base_ring(ℛplain))))), NTT.coeffs_primal(b)))
-end
+π(params::CKKSParams, b) = b
 
 𝒩(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
 𝒢(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
@@ -33,7 +29,7 @@ mul_expand(params::CKKSParams, c::CipherText) = map(c->switch(params.ℛbig, c),
 function mul_contract(params::CKKSParams, c)
     @fields_as_locals params::CKKSParams
     map(c) do e
-        switch(ℛ, multround(e, modulus(base_ring(ℛplain)), modulus(coefftype(ℛ))))
+        switch(ℛ, e)
     end
 end
 

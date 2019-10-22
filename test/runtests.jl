@@ -22,3 +22,6 @@ include("bfv_noise.jl")
 
 # BFV with CRT representation
 include("bfv_crt.jl")
+
+# CKKS
+include("ckks_triv.jl")

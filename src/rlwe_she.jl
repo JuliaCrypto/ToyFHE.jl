@@ -95,7 +95,7 @@ Base.length(c::CipherText) = length(c.cs)
 Base.getindex(c::CipherText, i::Integer) = c.cs[i]
 Base.lastindex(c::CipherText) = length(c)
 function Base.show(io::IO, kp::CipherText{Enc, P, <:Any, N}) where {P, Enc, N}
-    print(io, scheme_name(P), " key pair (length ", N)
+    print(io, scheme_name(P), " ciphertext (length ", N)
     Enc != Any && print(io, ", encoding $Enc")
     print(io, ")")
 end

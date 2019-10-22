@@ -1,8 +1,10 @@
 module ToyFHE
 
-export encrypt, decrypt, keygen, keyswitch, PolyCRTEncoding
+export encrypt, decrypt, keygen, keyswitch, PolyCRTEncoding, CKKSEncoding
 export BFVParams, BGVParams, CKKSParams
 export PubKey, PrivKey, EvalKey, KeyPair
+
+export coefftype
 
 using Random
 using Distributions
@@ -24,6 +26,7 @@ include("cryptparams.jl")
 include("bgv.jl")
 include("bfv.jl")
 include("ckks.jl")
+include("ckksencoding.jl")
 include("nemo.jl")
 include("encoding.jl")
 include("polycrtencoding.jl")
