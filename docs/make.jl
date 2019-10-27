@@ -14,3 +14,7 @@ pages = [
         "man/ckks.md"
     ]
 ])
+
+deploydocs(
+    repo = "github.com/JuliaComputing/ToyFHE.jl.git",
+)
