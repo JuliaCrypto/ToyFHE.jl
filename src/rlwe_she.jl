@@ -70,6 +70,8 @@ struct KeyPair{P <: SHEShemeParams}
 end
 Base.show(io::IO, kp::KeyPair{P}) where {P} = print(io, scheme_name(P), " key pair")
 
+Base.broadcastable(k::Union{PrivKey, PubKey, EvalKey, KeyPair}) = Ref(k)
+
 ################################################################################
 #                        CipherText
 ################################################################################

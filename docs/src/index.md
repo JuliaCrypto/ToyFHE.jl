@@ -25,13 +25,15 @@ rise to a couple of design decisions:
 
     3. The code should be kept small and modular.
 
+    4. After reading the manual you should feel that you'd be able to completely
+       reimplement this package from scratch if you wanted to.
+
 In addition to modular arithmetic, the primary computational primitive needed
 by the schemes implemented in this package is polynomial multiplication modulo
 a certain cyclotomic polynomial. Two backends are available that provide this
 primitive:
 
-- A native julia one implemented in this package, based on
-(FourierTransforms.jl)[https://github.com/JuliaComputing/FourierTransforms.jl].
+- A native julia one implemented in this package, based on (FourierTransforms.jl)[https://github.com/JuliaComputing/FourierTransforms.jl].
 - `libflint`, via the (Nemo.jl)[https://github.com/Nemocas/Nemo.jl] stack of packages.
 
 The former is written in pure julia all the way down and

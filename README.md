@@ -19,6 +19,7 @@ schemes:
 
 - Brakerski/Fan-Vercauteren (BFV)
 - Brakerski-Gentry-Vaikuntanathan (BGV)
+- Cheon-Kim-Kim-Song (CKKS)
 
 Both power-of-two and general cyclotomic rings are supported for homomorphic
 operations. The former is based on a pure Julia FFT implementation and thus

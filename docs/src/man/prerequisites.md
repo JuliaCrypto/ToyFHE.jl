@@ -9,13 +9,15 @@ contain links to more in-depth material where applicable. Where possible this
 guide should make concrete references to how theses concepts are represented
 in code in this package.
 
-# Modular Arithmetic
+## Modular Arithmetic
 Provided by either the GaloisFields.jl package or Nemo.jl
 
-# Chinese remainder theorem
+## Chinese remainder theorem
 
-# The Number Theoretic Transform - Fourier Transforms over finite fields
+## The Number Theoretic Transform - Fourier Transforms over finite fields
 
-# Hensel lifting
+## Correspondence between NTT and the roots of a cyclotomic polynomial
 
-# Discrete Gaussians
+## Hensel lifting
+
+## Discrete Gaussians

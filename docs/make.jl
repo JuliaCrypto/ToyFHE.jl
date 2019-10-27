@@ -1,7 +1,7 @@
 using Documenter
 using ToyFHE
 
-makedocs(sitename="ToyFHE.jl", modules=[ToyFHE, ToyFHE.BFV],
+makedocs(sitename="ToyFHE.jl", modules=[ToyFHE],
 pages = [
     "index.md",
     "Manual" => [
@@ -10,6 +10,7 @@ pages = [
             "man/background/rlwe.md",
             "man/background/fhe.md",
         ],
-        "man/encoding.md"
+        "man/encoding.md",
+        "man/ckks.md"
     ]
 ])

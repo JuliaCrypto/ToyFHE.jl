@@ -14,6 +14,7 @@ function CKKSEncoding{ScaleT}(plain::PlainT) where {ScaleT, PlainT}
     scaled = map(x->reinterpret(ScaleT, x), NTT.coeffs_primal(plain))
     # Undo the root of unity premul
     multed = map(x->convert(Float64, x), scaled) .* [Complex{Float64}(exp(big(-2*k/(2*length(scaled))*pi*im))) for k in eachindex(scaled)]
+    Core.eval(Core.Main, :(multed=$multed))
     # FFT it and take only the non-conjugated coefficients
     CKKSEncoding{ScaleT, PlainT}(OffsetArray(fft(collect(multed))[1:2048], 0:2047))
 end

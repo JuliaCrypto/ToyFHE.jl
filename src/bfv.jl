@@ -98,9 +98,11 @@ function BFVParams(p, σ=8/√(2pi), α=9, r=1; eval_mult_count = 0, security = 
         end
     end
 
-    qPrime = nextprime(Int128(2)^(ceil(Int, log2(q))+1) + 1, 1; interval=2n)
+    bits = ceil(Integer, log2(q))+1
+    T = bits > 256 ? Int512 : bits > 128 ? Int256 : Int128
+    qPrime = nextprime(T(2)^(ceil(Int, log2(q))+1) + 1, 1; interval=2n)
     largebits = 2*ceil(Int, log2(q)) + ceil(Int, log2(p)) + 3
-    Tlarge = largebits > 128 ? Int256 : Int128
+    Tlarge = largebits > 256 ? Int512 : largebits > 128 ? Int256 : Int128
     qLargeBig = nextprime(big(2)^largebits + 1, 1; interval=2n)
     qPrimeLarge = Tlarge(qLargeBig)
 
