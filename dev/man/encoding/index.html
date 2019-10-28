@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Ciphertext Encodings · ToyFHE.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>ToyFHE.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">ToyFHE.jl</a></li><li><span class="toctext">Manual</span><ul><li><span class="toctext">Background</span><ul><li><a class="toctext" href="../background/">Cryptography background</a></li><li><a class="toctext" href="../background/rlwe/">Ring LWE and ℛq</a></li><li><a class="toctext" href="../background/fhe/">Cryptographic Schemes for FHE</a></li></ul></li><li class="current"><a class="toctext" href>Ciphertext Encodings</a><ul class="internal"><li><a class="toctext" href="#Scalar-Encodings-1">Scalar Encodings</a></li><li><a class="toctext" href="#SIMD-Encoding-1">SIMD Encoding</a></li><li><a class="toctext" href="#Encoding-Summary-1">Encoding Summary</a></li></ul></li><li><a class="toctext" href="../ckks/">The CKKS encryption scheme</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Ciphertext Encodings</a></li></ul><a class="edit-page" href="https://github.com/JuliaComputing/ToyFHE.jl/blob/master/docs/src/man/encoding.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Ciphertext Encodings</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Ciphertext-Encodings-1" href="#Ciphertext-Encodings-1">Ciphertext Encodings</a></h1><p>In the <a href="man/@ref background">background section</a>, we learned how to homomorphically perform operations over the ring <span>$\mathscr{R}_q$</span>. However, in general we may want to perform computations over mathematical spaces other than <span>$\mathscr{R}_q$</span>. To do, we must devise a scheme and selection of parameters <code>p,q,m</code> that allow us to efficiently <strong>encode</strong> our object of interested into an element of <span>$\mathscr{R}_q$</span> such that arithmetic in <span>$\mathscr{R}_q$</span> corresponds to whatever computation we&#39;re interested in for the encoded object. In this section we shall see several strategies for encoding numbers into single ciphertexts, while in the next section we shall consider the encoding of more complex higher level objects into multiple ciphertexts. To make the above mentioned parameterization explicit, we will use the notation <span>$\mathscr{R}_{q,p,m}$</span> in this section rather than leaving the parameters <span>$p,m$</span> implicit.</p><h2><a class="nav-anchor" id="Scalar-Encodings-1" href="#Scalar-Encodings-1">Scalar Encodings</a></h2><p>As noted in the <a href="man/@ref rlwe">background section</a>, there is a natural embedding of <span>$\mathbb{Z}/p \mathbb{Z}$</span> into <span>$\mathscr{R}_{q,p,m}$</span> (for arbitrary <code>q</code>,<code>m</code>, though of course we require <code>q&gt;p</code> and security considerations will in general force larger values).</p><pre><code class="language-julia">ℛ = NegacyclicRing{GaloisField(7), 2}(nothing)
+p1, p2 = zero(ℛ), zero(ℛ)
+p1[0] = 3
+p2[0] = 4
+p1*p2
+
+# output
+2-element ToyFHE.NTT.RingElement{NegacyclicRing{𝔽₇,2}(0),𝔽₇,Array{𝔽₇,1}} with indices 0:1:
+ 5
+ 0</code></pre><p>To make the use of this encoding explicit, there is an encoding wrapper type that simply perfoms this encoding (in this example with UInt8, which in Julia is defined as <span>$\mathbb{Z}/256\mathbb{Z}$</span>)</p><pre><code class="language-julia">ℛ = NegacyclicRing{UInt8, 2}(nothing)
+a, b = ScalarEncoding{UInt8}(zero(ℛ)), ScalarEncoding{UInt8}(zero(ℛ))
+a[] = 3
+b[] = 15
+convert(RingElement, a) * convert(RingElement, b)
+
+# output
+2-element RingElement{NegacyclicRing{UInt8,2}(0x00),UInt8,Array{UInt8,1}} with indices 0:1:
+ 0x2d
+ 0x00</code></pre><h2><a class="nav-anchor" id="SIMD-Encoding-1" href="#SIMD-Encoding-1">SIMD Encoding</a></h2><p>In general, the ring dimension <span>$n$</span> will be quite large (e.g. 2048, 4096 for small examples, or even larger for programs of practical interest). As such, it seems wasteful to only use the lowest coefficient for computation, while the others just sit around warming the planet. And of we can always use the other coefficients if the operations if we&#39;re ok with <span>$\mathscr{R}_q$</span> arithmetic. However, in practical operations we are much more interested in pointwise operations on vectors rater than negacyclic convolutions of vectors. There are several techniques to remidy this disconnect and let us treat a single <span>$\mathscr{R}_q$</span> as multiple independent plaintexts with both addition and multiplication being applied elementwise, similar to SIMD lanes in a modern CPU or GPU. In the literature, these independent plaintexts are generally referred to as plaintext &quot;slots&quot;. In practice, how to go between the vector of slots and an element in <span>$\mathscr{R}_q$</span> depends on the which parameter domain we&#39;re in, though they are all just applications of the chinese remainder theorem for polynomials.</p><h3><a class="nav-anchor" id="SIMD-Encoding-using-NTT-1" href="#SIMD-Encoding-using-NTT-1">SIMD Encoding using NTT</a></h3><p>You may recall from the <a href="man/@ref background">background section</a> that we are using a mathematical trick known as the Number Theory Transform (NTT) to efficiently perform negacyclic convolutions as pointwise multiplications. Naturally, we can also apply this trick in reverse and use the fact that we can perform negacyclic convolutions to obtain a method to perform element-wise multiplications. The catch here is that for this to work, we need to be able to do negacyclic convolutions in <em>both</em> the plaintext space and the ciphertext space (we always need to be able to do the latter, but in the general scheme, we can chose the plaintext modulus <code>p</code>). Since the ring dimension is often quite large, this method may not be applicable to values of <code>p</code> of interest, or may force us to use a value of <code>p</code> larger than we intended. Recall thus the condition for being able to apply the NTT:</p><pre><code class="language-none">If the prime factors of p are `p = p₁ ⋯ pⱼ`, the NTT exists iff the `pᵢ` are all distrinct and 2n divides `pᵢ` for all `i` in `1:j`.</code></pre><p>Since in practice <code>N</code> is generally in the thousands to tens of thousands and is a power of two, the available values of <code>p</code> is fairly restricted. Nevertheless if the plaintext space of interest is e.g. machine integers (of 16, 32 or 64 bit width) and lack of overflow is guaranteed, this encoding may be an attractive option. In particular note that <span>$65537 = 2^16 + 1$</span> is prime and can thus be encoded with minimal overhead. Note further that this methods gives us exactly <span>$n$</span> plaintext slots, so is a very efficient method of encoding such integers into a ciphertext.</p><p>This package provides a convenience wrapper that acts as a view into a plaintext, but implicity performs the NTT:</p><pre><code class="language-julia">ℛ = NegacyclicRing{GaloisField(65537), 2048}()
+
+a = SlotEncoding(zero(ℛ))
+a[0:9] = 1:10
+
+b = SlotEncoding(zero(ℛ))
+b[:] .= 10
+
+SlotEncoding(convert(RingElement, a) * convert(RingElement, b))[0:10]
+
+# output
+11-element Array{𝔽₆₅₅₃₇,1}:
+  10
+  20
+  30
+  40
+  50
+  60
+  70
+  80
+  90
+ 100
+   0</code></pre><h3><a class="nav-anchor" id="SIMD-Encoding-over-general-cyclotomics-1" href="#SIMD-Encoding-over-general-cyclotomics-1">SIMD Encoding over general cyclotomics</a></h3><p>The example in the previous section is a special case of a more general technique: The polynomial chinese remainder theorem. Just like its analogue for integers (which is discussed in the <a href="man/@ref crt">mathematical background</a> and used for the <a href="man/@ref crt-encoding">CRT encoding of integer coefficients</a>), if a polynomial f has coprime factors <code>f = f₁ ⋯ fⱼ</code>, then there is an ismorphism between polynomials mod <code>f</code> and polynomials mod each of the factors. As a result, if <span>$\Phi_m(x) \in \mathbb{Z}_p[x]$</span> splits as <span>$\Phi_m(x) = f_1(x) \cdots f_j(x)$</span>, this induces an ismorphism</p><div>\[\mathbb{Z}_p[x]/\Phi_m(x) \cong \mathbb{Z}_p[x]/f_1(x) \times \cdots \times \mathbb{Z}_p[x]/f_j(x)\]</div><p>We can now see the correspondence between this definition and the method of the previous subection. Recall that one of the definitions of the m-th cyclotomic polynomial is</p><div>\[\Phi_m(x) = \Pi_{k=1}^{\phi(m)} (x - \zeta_{m,k})\]</div><p>where the <span>$\zeta_{m,k}$</span> are the m-th <a href="man/@ref primitive-roots">primitive roots of unity</a>. The definition of the previous section simply requires that <span>$\zeta_{m,k} \in \mathbb{Z}_p$</span> (i.e. that <span>$\mathbb{Z}_p$</span> contains the m-th primitive roots of unity), and so by the chinese remainder theorem our ring factors into <span>$\phi(m) = n$</span> copies of <span>$\mathbb{Z}_p$</span>. So now let us consider what happens when the setting of the previous section does not apply.</p><p>For concreteness, let us suppose we choose <code>m = 7</code>,<code>p=2</code>. We have (for a more general introduction to cyclotomics using Nemo, see the <a href="man/@ref background-rlwe">RLWE section of the background</a>):</p><pre><code class="language-julia">using Nemo
+ℤ = Nemo.ZZ
+ℤx, x = PolynomialRing(ℤ, &quot;x&quot;)
+ℤpx, xp = PolynomialRing(ResidueRing(ℤ, 2), &quot;x&quot;)
+Φ(m, x) = Nemo.cyclotomic(m, x)
+
+Nemo.factor(ℤpx(Φ(7, x)))
+
+# output
+
+1 * (x^3+x+1) * (x^3+x^2+1)</code></pre><p>Thus, we see that <span>$\mathbb{F}_2/\Phi_7(x) \cong \mathbb{F}_2/(x^3 + x + 1) \times \mathbb{F}_2/(x^3 + x^2 + 1) \cong \mathbb{F}_{2^3}^2$</span> (i.e. two copies of the finite field <span>$\mathbb{F}_{2^3}$</span>). It is these two copies that we can independently address in a SIMD manner. Of course we may also use any subfields of this factorization, and in particular we may use the subfield <span>$\mathbb{F}_2$</span> if we want to perform binary arithmetic.</p><p>In summary: We get one copy of <span>$\mathbb{F}_{p^d}$</span> for every <em>distinct</em> irreducible factor of <span>$\Phi_m(x)$</span> over <span>$\mathbb{F}_p$</span>.</p><div class="admonition note"><div class="admonition-title">Note</div><div class="admonition-text"><p>The field <span>$\mathbb{F}_{p^r}$</span> and the ring <span>$\mathbb{Z}/p^r \mathbb{Z}$</span> are different. The latter may be of interest when emulating arithmetic such as <code>UInt8</code> with overflow semantics matching that of standard Julia (i.e. the standard Julia UInt8 type is equivalent to <span>$\mathbb{Z}/256 \mathbb{Z}$</span>). We shall see how to construct an encoding for such a ring in the next section.</p></div></div><p>The <code>PolyCRTEncoding</code> type knows how to perform these isomorphisms and will automatically apply them when possible:</p><pre><code class="language-julia">const ℤ = ZZ
+const ℤx, x = ZZ[&quot;x&quot;]
+const ℤpx, xp = ResidueRing(ZZ, 2)[&quot;xp&quot;]
+ℛ = ResidueRing(ℤpx, cyclotomic(7, x))
+
+plain = PolyCRTEncoding(zero(ℛ))
+β = GaloisFields.gen(eltype(plain))
+
+plain[1] = β+1
+plain[2] = β^2+1
+
+p = convert(ℛ, plain)
+
+# output
+xp^4+xp^3+xp^2+xp</code></pre><p>And of course as before it works the inverse way also:</p><pre><code class="language-julia-repl">julia&gt; PolyCRTEncoding(ℛ(xp^4+xp^3+xp^2+xp))
+2-element PolyCRTEncoding{𝔽₈}:
+   β + 1
+ β^2 + 1</code></pre><h3><a class="nav-anchor" id="SIMD-Encoding-from-Hensel-lifting-1" href="#SIMD-Encoding-from-Hensel-lifting-1">SIMD Encoding from Hensel lifting</a></h3><p>In the previous subsection, we saw how to encode values in extension fields of the finite field <span>$\mathbb{F}_p$</span>. In this section, we shall see how to SIMD encode plaintext values from the ring <span>$\mathbb{Z}/p^r \mathbb{Z}$</span> using <a href="man/@ref hensel-lifting">Hensel Lifting</a>. The key fact of Hensel&#39;s lemma is that we may &quot;lift&quot; a factorization of <span>$f$</span> over <span>$\mathbb{F}_p$</span> to a factorization over the larger ring <span>$\mathbb{Z}/p^r \mathbb{Z}$</span> (in this case for <span>$p=2$</span>, <span>$r=8$</span>, <span>$p^r=256$</span>)</p><pre><code class="language-julia-repl">julia&gt; factors = collect(keys(Hecke.factor_mod_pk(Φ(7, x), 2, 8)))
+2-element Array{fmpz_poly,1}:
+ x^3-90*x^2-91*x-1
+ x^3+91*x^2+90*x-1</code></pre><p>which is the lift of the factorization we know from before:</p><pre><code class="language-julia-repl">julia&gt; ℤpx.(factors)
+2-element Array{nmod_poly,1}:
+ x^3+x+1
+ x^3+x^2+1</code></pre><p>The CRT encoding works much the same way:</p><pre><code class="language-julia">ℤpkx = ResidueRing(ZZ, 256)[&quot;x&quot;][1]
+encoded = AbstractAlgebra.crt(ℤpkx.(Int.([0x10, 0x20])), ℤpkx.(factors))
+
+# output
+48*x^4+48*x^2+48*x+48</code></pre><pre><code class="language-julia-repl">julia&gt; mod(encoded, ℤpkx(factors[1]))
+16
+
+julia&gt; mod(encoded, ℤpkx(factors[2]))
+32</code></pre><p>Of course, as before, the <code>PolyCRTEncoding</code> type will perform all this work automatically:</p><pre><code class="language-julia">const ℤ = Nemo.ZZ
+const ℤx, x = ℤ[&quot;x&quot;]
+const ℤpx, xp = ResidueRing(ℤ, 256)[&quot;xp&quot;]
+ℛ = ResidueRing(ℤpx, cyclotomic(7, x))
+
+plain = PolyCRTEncoding(zero(ℛ))
+
+plain[1] = 0x10
+plain[2] = 0x20
+
+p = convert(ℛ, plain)
+
+# output
+48*xp^4+48*xp^2+48*xp+48</code></pre><h2><a class="nav-anchor" id="Encoding-Summary-1" href="#Encoding-Summary-1">Encoding Summary</a></h2><p>While each of the three SIMD approaches outlined above is an example of the same underlying mathematical principle, they have fastly different performance characteristics and supported parameter ranges. The following table provides a summary:</p><table><tr><th style="text-align: right">Method</th><th style="text-align: right">Plaintext Space</th><th style="text-align: right">Number of Slots</th><th style="text-align: right">Parameter Constraints</th></tr><tr><td style="text-align: right">NTT</td><td style="text-align: right"><span>$\mathbb{Z}/p$</span></td><td style="text-align: right">1</td><td style="text-align: right">None</td></tr><tr><td style="text-align: right">SIMD NTT</td><td style="text-align: right"><span>$\mathbb{F}_p$</span></td><td style="text-align: right"><span>$n$</span></td><td style="text-align: right"><span>$p$</span> prime, <span>$gcd(p-1,2n)==2n$</span></td></tr><tr><td style="text-align: right">Generic CRT</td><td style="text-align: right"><span>$\mathbb{F}_{p^d}$</span></td><td style="text-align: right"><span>$l$</span></td><td style="text-align: right">p prime, <span>$\phi_m(n)=l*d$</span>, <span>$\Phi_m$</span> factors over <span>$\mathbb{F}_p$</span></td></tr><tr><td style="text-align: right">+ Hensel</td><td style="text-align: right"><span>$\mathbb{Z}_{p^k}[x]/f_i(x)$</span></td><td style="text-align: right"><span>$l$</span></td><td style="text-align: right">p prime, <span>$\phi_m(n)=l*d$</span>, <span>$\Phi_m$</span> factors over <span>$\mathbb{F}_p$</span></td></tr></table><footer><hr/><a class="previous" href="../background/fhe/"><span class="direction">Previous</span><span class="title">Cryptographic Schemes for FHE</span></a><a class="next" href="../ckks/"><span class="direction">Next</span><span class="title">The CKKS encryption scheme</span></a></footer></article></body></html>
