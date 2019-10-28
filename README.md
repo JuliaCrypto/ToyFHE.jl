@@ -28,12 +28,7 @@ If you do not have the correct versions of the dependencies installed, you may b
 
 ## Documentation
 
-- [**STABLE**][docs-stable-url] &mdash; **documentation of the most recently tagged version.**
 - [**DEVEL**][docs-dev-url] &mdash; *documentation of the in-development version.*
-
-
-[![Build Status](https://travis-ci.org/JuliaComputing/ToyFHE.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/ToyFHE.jl)
-[![codecov](https://codecov.io/gh/JuliaComputing/ToyFHE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/ToyFHE.jl)
 
 ## Features
 
