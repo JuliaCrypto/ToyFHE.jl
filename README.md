@@ -3,8 +3,39 @@
 > I frequently hear music in the heart of noise. - George Gershwin
 
 
+| **Documentation**                                                               | **Build Status**                                                                                |
+|:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
+| [![][docs-dev-img]][docs-dev-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![][codecov-img]][codecov-url] |
+
+## Installation
+
+This package currently depends on a number of modifications
+to upstream packages. The included `Manifest.toml` lists
+known working versions for these packages. To use those
+versions, first clone this package to a location of your
+choice:
+
+```
+$ git clone https://github.com/JuliaComputing/ToyFHE.jl ToyFHE
+```
+
+Then load up the project within Julia:
+```
+$ julia --project=ToyFHE
+```
+
+If you do not have the correct versions of the dependencies installed, you may be asked to install them via `instantiate`.
+
+## Documentation
+
+- [**STABLE**][docs-stable-url] &mdash; **documentation of the most recently tagged version.**
+- [**DEVEL**][docs-dev-url] &mdash; *documentation of the in-development version.*
+
+
 [![Build Status](https://travis-ci.org/JuliaComputing/ToyFHE.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/ToyFHE.jl)
 [![codecov](https://codecov.io/gh/JuliaComputing/ToyFHE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/ToyFHE.jl)
+
+## Features
 
 **WARNING**: The code in this repository is in an extremely alpha quality. You
 may want to check back in a little bit once things have been cleaned up.
@@ -50,3 +81,18 @@ I am not a cryptographer. I am not your cryptographer. This code is a toy.
 This code is not intended for production use. This code has not been audited
 or validated. Consult a professional cryptographer, before using cryptography.
 No warranty (see LICENSE). Don't sue me.
+
+
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://juliacomputing.github.io/ToyFHE.jl/dev
+
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-url]: https://juliacomputing.github.io/ToyFHE.jl/stable
+
+[travis-img]: https://travis-ci.org/JuliaComputing/ToyFHE.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/JuliaComputing/ToyFHE.jl
+
+[codecov-img]: https://codecov.io/gh/JuliaComputing/ToyFHE.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/JuliaComputing/ToyFHE.jl
+
+[issues-url]: https://github.com/JuliaComputing/ToyFHE.jl/issues
