@@ -5,24 +5,24 @@ using GaloisFields: PrimeField
 using Random
 using StructArrays
 
-struct CRTEncoded{T, N, M <: NTuple{N, PrimeField{T}}} <: Number
+struct CRTEncoded{N, M <: NTuple{N, PrimeField}} <: Number
     c::M
 end
 Base.getproperty(c::CRTEncoded, i::Int64) = c.c[i]
-NTT.modulus(::Type{CRTEncoded{T,N,mods}}) where {T,N,mods} = prod(x->BigInt(NTT.modulus(x)), fieldtypes(mods))
+NTT.modulus(::Type{CRTEncoded{N,mods}}) where {N,mods} = prod(x->BigInt(NTT.modulus(x)), fieldtypes(mods))
 NTT.modulus(c::CRTEncoded) = NTT.modulus(typeof(c))
-moduli(::Type{CRTEncoded{T,N,mods}}) where {T,N,mods} = mods
+moduli(::Type{CRTEncoded{N,mods}}) where {N,mods} = mods
 
-function Base.promote_rule(::Type{CRTEncoded{T, N, moduli}}, ::Type{<:Integer}) where {T, N, moduli}
-    CRTEncoded{T, N, moduli}
+function Base.promote_rule(::Type{CRTEncoded{N, moduli}}, ::Type{<:Integer}) where {N, moduli}
+    CRTEncoded{N, moduli}
 end
 
-function CRTEncoded{T, N, M}(x::Integer) where {T,N,M <: NTuple{N, PrimeField{T}}}
-    CRTEncoded{T,N,M}(map(fieldtypes(M)) do T
+function CRTEncoded{N, M}(x::Integer) where {N,M <: NTuple{N, PrimeField}}
+    CRTEncoded{N,M}(map(fieldtypes(M)) do T
         T(x)
     end)
 end
-CRTEncoded{T, N, M}(x::CRTEncoded{T, N, M}) where {T,N,M<: NTuple{N, PrimeField{T}}} = x
+CRTEncoded{N, M}(x::CRTEncoded{N, M}) where {T,N,M<: NTuple{N, PrimeField}} = x
 
 function AbstractAlgebra.crt(r1::Integer, m1::Integer, r2::Integer, m2::Integer)
     g, u, v = gcdx(m1, m2)
@@ -31,7 +31,7 @@ function AbstractAlgebra.crt(r1::Integer, m1::Integer, r2::Integer, m2::Integer)
     return mod(r1*v*m2 + r2*u*m1, m)
 end
 
-function Base.convert(::Type{Integer}, x::CRTEncoded{<:Any, <:Any, moduli}) where {moduli}
+function Base.convert(::Type{Integer}, x::CRTEncoded{<:Any, moduli}) where {moduli}
     # TODO: Do this ourselves?
     AbstractAlgebra.crt(collect(map(y->BigInt(convert(Integer, y)), x.c)), collect(map(x->BigInt(modulus(x)), fieldtypes(moduli))))
 end
@@ -42,33 +42,33 @@ function Base.convert(T::Type{<:CRTEncoded}, x::PrimeField)
     T(x)
 end
 
-function Base.:+(a::CRTEncoded{T, N, moduli}, b::CRTEncoded{T, N, moduli}) where {T,N,moduli}
-    CRTEncoded{T, N, moduli}(a.c .+ b.c)
+function Base.:+(a::CRTEncoded{N, moduli}, b::CRTEncoded{N, moduli}) where {T,N,moduli}
+    CRTEncoded{N, moduli}(a.c .+ b.c)
 end
 
-function Base.:*(a::CRTEncoded{T, N, moduli}, b::CRTEncoded{T, N, moduli}) where {T,N,moduli}
-    CRTEncoded{T, N, moduli}(a.c .* b.c)
+function Base.:*(a::CRTEncoded{N, moduli}, b::CRTEncoded{N, moduli}) where {N,moduli}
+    CRTEncoded{N, moduli}(a.c .* b.c)
 end
 
-function Base.:-(a::CRTEncoded{T, N, moduli}) where {T,N,moduli}
-    CRTEncoded{T, N, moduli}(.-(a.c))
+function Base.:-(a::CRTEncoded{N, moduli}) where {N,moduli}
+    CRTEncoded{N, moduli}(.-(a.c))
 end
 
-function NTT.is_primitive_root(ψ::CRTEncoded{<:Any, <:Any, moduli}, n) where {moduli}
+function NTT.is_primitive_root(ψ::CRTEncoded{<:Any, moduli}, n) where {moduli}
     all(ψ.c) do r
         return NTT.is_primitive_root(r, n)
     end
 end
 
-function GaloisFields.minimal_primitive_root(::Type{CRTEncoded{T,N,moduli}}, n) where {T,N,moduli}
-    CRTEncoded{T, N, moduli}(map(T->GaloisFields.minimal_primitive_root(T, n), fieldtypes(moduli)))
+function GaloisFields.minimal_primitive_root(::Type{CRTEncoded{N,moduli}}, n) where {T,N,moduli}
+    CRTEncoded{N, moduli}(map(T->GaloisFields.minimal_primitive_root(T, n), fieldtypes(moduli)))
 end
 
-function Random.rand(rng::AbstractRNG, ::Random.SamplerType{CRTEncoded{T, N, moduli}}) where {T,N,moduli}
-    CRTEncoded{T,N,moduli}(map(rand, fieldtypes(moduli)))
+function Random.rand(rng::AbstractRNG, ::Random.SamplerType{CRTEncoded{N, moduli}}) where {T,N,moduli}
+    CRTEncoded{N,moduli}(map(rand, fieldtypes(moduli)))
 end
 
-function StructArrays.staticschema(CT::Type{<:CRTEncoded{T,N}}) where {T,N}
+function StructArrays.staticschema(CT::Type{<:CRTEncoded})
     fieldtype(CT, 1)
 end
 
@@ -108,6 +108,6 @@ function NTT.inntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} w
     error("NNTT methods currently only implemented for CRTEncoded in StructArray format")
 end
 
-function sample_ring_array(rng::Random.AbstractRNG, ℛ::NegacyclicRing{<:CRTEncoded{T, N, moduli}}, coeff_distribution) where {T,N,moduli}
+function sample_ring_array(rng::Random.AbstractRNG, ℛ::NegacyclicRing{<:CRTEncoded{N, moduli}}, coeff_distribution) where {N,moduli}
     StructArray(coefftype(ℛ)(rand(rng, coeff_distribution)) for _ in 1:degree(modulus(ℛ)))
 end

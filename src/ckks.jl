@@ -55,11 +55,11 @@ struct FixedRational{T, denom}
 end
 
 function Base.convert(::Type{Float64}, fr::FixedRational{T, denom}) where {T, denom}
-    n = fr.x.n
+    n = convert(Integer, fr.x)
     if n > div(modulus(T), 2)
         n = n - modulus(T)
     end
-    n/denom
+    Float64(n/denom)
 end
 
 function Base.show(io::IO, fr::FixedRational{<:Any, denom}) where {denom}
