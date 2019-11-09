@@ -30,12 +30,14 @@ end
 # HACK - DiscreteUniform is the default for types, but it'd be nice to
 # allow this.
 Distributions.DiscreteUniform(T::Type) = T
+Distributions.DiscreteUniform(R::Nemo.FmpzModRing) = R
 
 # HACK
 Base.BroadcastStyle(::Type{<:OffsetArray{<:Any, <:Any, T}}) where T<:StructArray = Base.BroadcastStyle(T)
 
 # HACK
 Base.convert(::Type{Integer}, x::PrimeField) = x.n
+Base.convert(::Type{Integer}, x::Nemo.fmpz_mod) = x.data
 
 # HACK
 Base.convert(::Type{<:StructArray{T}}, A::AbstractArray{T}) where {T} =
@@ -85,5 +87,7 @@ end
 
 # For now
 Base.widen(::Type{Int128}) = Int256
+
+Base.promote_rule(::Type{Nemo.fmpz_mod}, ::Type{UInt64}) = Nemo.fmpz_mod
 
 end

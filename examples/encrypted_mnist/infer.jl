@@ -15,6 +15,7 @@ using LinearAlgebra
 using ToyFHE
 using Primes
 using GaloisFields
+using Test
 
 using OffsetArrays
 
@@ -101,7 +102,7 @@ q₁ = nextprime(Int128(2)^30 + 1, 1; interval=2N)
 q₂ = nextprime(q₁ + 2N, 1; interval=2N)
 q₃ = nextprime(q₂ + 2N, 1; interval=2N)
 
-ℛ = let CT = ToyFHE.CRTEncoded{Int64, 5, Tuple{GaloisField.((q₀,q₁,q₂,q₃,ps))...}}
+ℛ = let CT = ToyFHE.CRTEncoded{5, Tuple{GaloisField.((q₀,q₁,q₂,q₃,ps))...}}
     ζ₂n = GaloisFields.minimal_primitive_root(CT, 2N)
     ToyFHE.NegacyclicRing{CT, N}(ζ₂n)
 end
@@ -111,10 +112,15 @@ kp = keygen(ckks_params)
 
 Iᵢⱼ = public_preprocess(batch)
 
-scale = 2^40
+scale = 2^30
 Tscale = FixedRational{coefftype(ckks_params.ℛ), scale}
 
-ciphertexts = map(Iᵢⱼ) do Iij
+C_Iij = map(Iᵢⱼ) do Iij
     plain = CKKSEncoding{Tscale}(zero(plaintext_space(ckks_params)))
-    plain .= vec(Iij)
+    plain .= OffsetArray(vec(Iij), 0:(N÷2-1))
+    encrypt(kp, plain)
 end
+
+weights = model.layers[1].weight
+conv_weights = reverse(reverse(weights, dims=1), dims=2)
+conved = [sum(C_Iij[i,j]*conv_weights[i,j,1,channel] for i=1:7, j=1:7) for channel = 1:4]

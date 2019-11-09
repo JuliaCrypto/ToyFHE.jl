@@ -19,11 +19,13 @@ function Base.convert(::Type{Integer}, x::SignedMod)
 end
 
 Base.oftype(a::SignedMod, b) = SignedMod(oftype(a.x, b))
-Base.promote_rule(::Type{SignedMod{T}}, ::Type{S}) where {T, S} = SignedMod{promote_rule(T, S)}
+Base.promote_rule(::Type{SignedMod{T}}, ::Type{S}) where {T, S} = SignedMod{promote_type(T, S)}
 
 for f in (:+, :-, :*)
     @eval $f(a::SignedMod{T}, b::SignedMod{T}) where {T} = SignedMod{T}($f(a.x, b.x))
 end
+
+Base.:*(a::SignedMod, b::Integer) = a*oftype(a, b)
 
 function Base.div(e::SignedMod, x::Integer, r::RoundingMode)
     oftype(e, div(convert(Integer, e), x, r))

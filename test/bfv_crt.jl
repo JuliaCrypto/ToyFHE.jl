@@ -9,7 +9,7 @@ n = 2048
 p1 = nextprime(Int128(2)^50 + 1, 1; interval=2n)
 p2 = nextprime(p1+2n, interval=2n)
 
-ℛ = let CT = ToyFHE.CRTEncoded{Int64, 2, Tuple{GaloisField(p1), GaloisField(p2)}}
+ℛ = let CT = ToyFHE.CRTEncoded{2, Tuple{GaloisField(p1), GaloisField(p2)}}
     ζ₄₀₉₆ = GaloisFields.minimal_primitive_root(CT, 2n)
     ToyFHE.NegacyclicRing{CT, n}(ζ₄₀₉₆)
 end
@@ -19,7 +19,7 @@ p4 = nextprime(p3+2n, 1; interval=2n)
 p5 = nextprime(p4+2n, 1; interval=2n)
 p6 = nextprime(p5+2n, 1; interval=2n)
 
-ℛbig = let CT = ToyFHE.CRTEncoded{Int64, 4, Tuple{GaloisField(p3), GaloisField(p4), GaloisField(p5), GaloisField(p6)}}
+ℛbig = let CT = ToyFHE.CRTEncoded{4, Tuple{GaloisField(p3), GaloisField(p4), GaloisField(p5), GaloisField(p6)}}
     ζ₄₀₉₆ = GaloisFields.minimal_primitive_root(CT, 2n)
     ToyFHE.NegacyclicRing{CT, n}(ζ₄₀₉₆)
 end
