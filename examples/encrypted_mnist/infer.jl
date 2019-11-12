@@ -25,7 +25,7 @@ function make_minibatch(X, Y, idxs)
     for i in 1:length(idxs)
         X_batch[:, :, :, i] = Float32.(X[idxs[i]])
     end
-    Y_batch = onehotbatch(Y[idxs], 0:9)
+Y_batch = onehotbatch(Y[idxs], 0:9)
     return (X_batch, Y_batch)
 end
 batch_size = 64
@@ -112,7 +112,7 @@ kp = keygen(ckks_params)
 
 Iᵢⱼ = public_preprocess(batch)
 
-scale = 2^30
+scale = Int128(2^40)
 Tscale = FixedRational{coefftype(ckks_params.ℛ), scale}
 
 C_Iij = map(Iᵢⱼ) do Iij
@@ -123,4 +123,23 @@ end
 
 weights = model.layers[1].weight
 conv_weights = reverse(reverse(weights, dims=1), dims=2)
-conved = [sum(C_Iij[i,j]*conv_weights[i,j,1,channel] for i=1:7, j=1:7) for channel = 1:4]
+conved3 = [sum(C_Iij[i,j]*conv_weights[i,j,1,channel] for i=1:7, j=1:7) for channel = 1:4]
+conved2 = map(((x,b),)->x .+ b, zip(conved3, model.layers[1].bias))
+conved1 = map(ToyFHE.modswitch, conved2)
+
+pk′ = PrivKey(ToyFHE.modswitch_drop(kp.priv.params), ToyFHE.modswitch_drop(kp.priv.secret))
+ek′ = keygen(EvalMultKey, pk′)
+
+Csqed1 = map(x->x*x, conved1)
+Csqed1 = map(x->keyswitch(ek′, x), Csqed1)
+
+function encrypted_matmul(weights, x::ToyFHE.CipherText)
+    sum(diag(circshift(weights, (0,(k-1)))).*circshift(x, (k-1,0)) for k = 1:64)
+end
+
+fq1_weights = model.layers[3].W
+fq1 = sum(enumerate(partition(1:256, 64))) do (i,range)
+    encrypted_matmul(fq1_weights[:, range], Csqed1[i])
+end
+
+decrypt(pk′, Csqed1[1])

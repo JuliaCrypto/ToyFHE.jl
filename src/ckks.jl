@@ -25,6 +25,7 @@ scheme_name(p::Type{CKKSParams}) = "CKKS"
 𝒩(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
 𝒢(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
 
+#=
 mul_expand(params::CKKSParams, c::CipherText) = map(c->switch(params.ℛbig, c), c.cs)
 function mul_contract(params::CKKSParams, c)
     @fields_as_locals params::CKKSParams
@@ -32,6 +33,7 @@ function mul_contract(params::CKKSParams, c)
         switch(ℛ, e)
     end
 end
+=#
 
 ################################################################################
 #                        CKKS Scheme definition
@@ -65,3 +67,23 @@ end
 function Base.show(io::IO, fr::FixedRational{<:Any, denom}) where {denom}
     print(io, convert(Float64, fr))
 end
+
+function maybe_wide_mul(a::Integer, b::Integer)
+    T = promote_type(typeof(a), typeof(b))
+    c = widemul(a, b)
+    isa(T, BigInt) && return c
+    c < typemax(T) ? c % T : c
+end
+
+function maybe_wide_sq(a::Integer, b::Integer)
+    T = promote_type(typeof(a), typeof(b))
+    c = big(a)^b
+    isa(T, BigInt) && return c
+    c < typemax(T) ? c % T : c
+end
+
+Base.:^(a::Type{FixedRational{T, denom}}, b::Int64) where {T,denom} = FixedRational{T, maybe_wide_sq(denom, b)}
+Base.:*(a::Type{FixedRational{T, denom}}, b::Number) where {T,denom} = FixedRational{T, b/denom}
+Base.:*(a::Type{FixedRational{T, denom1}}, b::Type{FixedRational{T, denom2}}) where {T,denom1,denom2} = FixedRational{T, maybe_wide_mul(denom1, denom2)}
+StructArrays.createinstance(FR::Type{FixedRational{T, denom}}, x::T) where {T,denom} =
+    reinterpret(FR, x)

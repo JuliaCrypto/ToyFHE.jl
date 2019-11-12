@@ -1,6 +1,6 @@
 using OffsetArrays
 
-coefftype(ring::Type) = eltype(poly)
+coefftype(ring::Type) = eltype(ring)
 modulus(ring) = Nemo.modulus(ring)
 degree(ring) = Nemo.degree(ring)
 

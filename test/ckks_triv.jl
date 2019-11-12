@@ -29,5 +29,5 @@ re = convert(ToyFHE.NTT.RingElement, plain)
 kp = keygen(params)
 c = encrypt(kp, plain)
 
-@test real.(collect(CKKSEncoding{Tscale}(decrypt(kp, c)))) ≈ LinRange(0.0, 1.0, 2048) atol=10^-4
-@test real.(collect(CKKSEncoding{Tscalesq}(decrypt(kp, c*c)))) ≈ LinRange(0.0, 1.0, 2048).^2 atol=10^-4
+@test real.(collect(decrypt(kp, c))) ≈ LinRange(0.0, 1.0, 2048) atol=10^-4
+@test real.(collect(decrypt(kp, c*c))) ≈ LinRange(0.0, 1.0, 2048).^2 atol=10^-4

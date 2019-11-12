@@ -25,3 +25,7 @@ include("bfv_crt.jl")
 
 # CKKS
 include("ckks_triv.jl")
+
+include("ckks_modswitch.jl")
+
+include("ckks_rotate.jl")

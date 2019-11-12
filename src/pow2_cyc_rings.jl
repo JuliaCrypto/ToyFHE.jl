@@ -13,7 +13,7 @@ using StructArrays
 import Base: *, +, -, ^
 
 import GaloisFields: PrimeField
-import ..ToyFHE: coefftype, modulus, degree
+import ..ToyFHE: coefftype, modulus, degree, ring
 import Nemo: base_ring
 
 export NegacyclicRing, RingSampler, nntt, inntt, RingCoeffs, coeffs,
@@ -84,6 +84,9 @@ operations.
     primal::Union{Nothing, OffsetVector{Field, Storage}}
     dual::Union{Nothing, OffsetVector{Field, Storage}}
 end
+ring(::Type{RingElement{ℛ}}) where {ℛ} = ℛ
+ring(::RingElement{ℛ}) where {ℛ} = ℛ
+degree(r::RingElement) = degree(ring(r))
 
 function Base.convert(::Type{<:RingElement{ℛ₁}}, r::RingElement{ℛ₂}) where {ℛ₁, ℛ₂}
     RingElement{ℛ₁}(map(c->convert(eltype(ℛ₁), c), coeffs_primal(r)), nothing)
@@ -101,6 +104,7 @@ end
 Base.axes(r::RingElement{ℛ}) where {ℛ} = (Base.IdentityUnitRange(0:degree(ℛ)-1),)
 Base.size(r::RingElement{ℛ}) where {ℛ} = map(length, axes(r))
 Base.zero(r::RingElement{ℛ}) where {ℛ} = RingElement{ℛ}(zero(r.primal), nothing)
+Base.zero(::Type{<:RingElement{ℛ}}) where {ℛ} = zero(ℛ)
 
 function coeffs_primal(r::RingElement{ℛ}) where {ℛ}
     if r.primal === nothing
@@ -154,11 +158,16 @@ function *(a::RingElement{ℛ}, b::RingElement{ℛ}) where {ℛ}
 end
 
 const RingScalar = Union{Integer, PrimeField}
-function *(a::RingScalar, b::RingElement{ℛ}) where {ℛ}
+
+function scalar_mul(a::Union{Integer, Field}, b::RingElement{ℛ, Field}) where {ℛ, Field}
     RingElement{ℛ}(b.primal === nothing ? nothing : a .* b.primal,
                     b.dual === nothing ? nothing : a .* b.dual)
 end
-*(a::RingElement{ℛ}, b::RingScalar) where {ℛ} = b*a
+
+*(a::Integer, b::RingElement{ℛ}) where {ℛ} = scalar_mul(a, b)
+*(a::RingElement{ℛ}, b::Integer) where {ℛ} = scalar_mul(b, a)
+*(a::Field, b::RingElement{ℛ, Field}) where {ℛ, Field<:Number} = scalar_mul(a, b)
+*(a::RingElement{ℛ, Field}, b::Field) where {ℛ, Field<:Number} = scalar_mul(b, a)
 
 function -(a::RingElement{ℛ}) where {ℛ}
     RingElement{ℛ}(a.primal === nothing ? nothing : -a.primal,
@@ -291,6 +300,17 @@ function inntt(c̃::RingCoeffs{ℛ})::RingCoeffs{ℛ} where {ℛ}
     mul!(c, CTPlan(eltype(ℛ), false, degree(modulus(ℛ)); ωpow=ωpow), c̃)
     n⁻¹ = inv(eltype(ℛ)(degree(modulus(ℛ))))
     RingCoeffs{ℛ}([x * n⁻¹ * ψ⁻¹^i for (i, x) in pairs(c.coeffs)])
+end
+
+# Rotations
+function apply_galois_element(re::RingElement, galois_element::Integer)
+    output = zero(re)
+    for i in axes(re, 1)
+        val = re[i]
+        q, r = divrem(galois_element*i, degree(re))
+        output[r] = (q % 2 == 1) ? -val : val
+    end
+    output
 end
 
 end

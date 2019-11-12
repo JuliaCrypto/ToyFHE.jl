@@ -12,7 +12,7 @@ plain[0] = 2
 
 # Generate a keypair and a corresponding relin key
 kp1 = keygen(params)
-ek = keygen(EvalKey, kp1.priv)
+ek = keygen(EvalMultKey, kp1.priv)
 
 c1 = encrypt(kp1, plain)
 

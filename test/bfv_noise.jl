@@ -11,7 +11,7 @@ plain = zero(plaintext_space(params))
 plain[0] = 2
 
 kp1 = keygen(params)
-ek = keygen(EvalKey, kp1.priv)
+ek = keygen(EvalMultKey, kp1.priv)
 
 c1 = encrypt(kp1, plain)
 b1 = invariant_noise_budget(kp1.priv, c1)

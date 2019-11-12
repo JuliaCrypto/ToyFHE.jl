@@ -90,4 +90,10 @@ Base.widen(::Type{Int128}) = Int256
 
 Base.promote_rule(::Type{Nemo.fmpz_mod}, ::Type{UInt64}) = Nemo.fmpz_mod
 
+# HACK
+Base.convert(::Type{OffsetArray{T, N, A1}}, A::OffsetArray{T, N, A1}) where {T,N,A1} = A
+function Base.convert(::Type{OffsetArray{T, N, A1}}, A::OffsetArray{T, N, A2}) where {T,N,A1,A2}
+    OffsetArray{T, N, A1}(convert(A1, A.parent), A.offsets)
+end
+
 end

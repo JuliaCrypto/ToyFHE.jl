@@ -32,8 +32,12 @@ function AbstractAlgebra.crt(r1::Integer, m1::Integer, r2::Integer, m2::Integer)
 end
 
 function Base.convert(::Type{Integer}, x::CRTEncoded{<:Any, moduli}) where {moduli}
-    # TODO: Do this ourselves?
-    AbstractAlgebra.crt(collect(map(y->BigInt(convert(Integer, y)), x.c)), collect(map(x->BigInt(modulus(x)), fieldtypes(moduli))))
+    if length(x.c) == 1
+        convert(Integer, x.c[1])
+    else
+        # TODO: Do this ourselves?
+        AbstractAlgebra.crt(collect(map(y->BigInt(convert(Integer, y)), x.c)), collect(map(x->BigInt(modulus(x)), fieldtypes(moduli))))
+    end
 end
 
 function Base.convert(T::Type{<:CRTEncoded}, x::PrimeField)
@@ -52,6 +56,10 @@ end
 
 function Base.:-(a::CRTEncoded{N, moduli}) where {N,moduli}
     CRTEncoded{N, moduli}(.-(a.c))
+end
+
+function Base.:-(a::CRTEncoded{N, moduli}, b::CRTEncoded{N, moduli}) where {T,N,moduli}
+    CRTEncoded{N, moduli}(a.c .- b.c)
 end
 
 function NTT.is_primitive_root(ψ::CRTEncoded{<:Any, moduli}, n) where {moduli}
@@ -76,6 +84,33 @@ function StructArrays.createinstance(::Type{T}, args...) where {T<:CRTEncoded}
     T(args)
 end
 
+
+# Modswitch to next modulus in CRT chain
+
+drop_last(::Type{CRTEncoded{N,M}}) where {N,M} = CRTEncoded{N-1,Tuple{M.parameters[1:end-1]...}}
+function drop_last(ℛ::NegacyclicRing{T, N}) where {T<:CRTEncoded, N}
+    T′ = drop_last(T)
+    NegacyclicRing{T′, N}(T′(ℛ.ψ.c[1:end-1]))
+end
+
+function modswitch(crt::CRTEncoded)
+    ct_qk = crt.c[end]
+    CRTEncoded(map(crt.c[1:end-1]) do cc
+        inv(typeof(cc)(modulus(ct_qk))) * (cc - typeof(cc)(convert(Integer, ct_qk)))
+    end)
+end
+
+function modswitch_drop(crt::CRTEncoded)
+    CRTEncoded(crt.c[1:end-1])
+end
+
+function modswitch(re::NTT.RingElement{ℛ, Field}) where {ℛ, Field <: CRTEncoded}
+    NTT.RingElement{drop_last(ℛ)}(map(modswitch, NTT.coeffs_primal(re)), nothing)
+end
+
+function modswitch_drop(re::NTT.RingElement{ℛ, Field}) where {ℛ, Field <: CRTEncoded}
+    NTT.RingElement{drop_last(ℛ)}(map(modswitch_drop, NTT.coeffs_primal(re)), nothing)
+end
 
 # Integration with NTT
 function NTT.nntt(rcs::RingCoeffs{ℛ,T,OffsetVector{T, S}})::RingCoeffs{ℛ} where {ℛ, T<:CRTEncoded, S<:StructArray{T}}

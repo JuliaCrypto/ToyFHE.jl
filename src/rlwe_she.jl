@@ -57,12 +57,29 @@ struct PubKey{P <: SHEShemeParams}
 end
 Base.show(io::IO, kp::PubKey{P}) where {P} = print(io, scheme_name(P), " public key")
 
-struct EvalKey{P <: SHEShemeParams}
+struct KeySwitchKey{P <: SHEShemeParams}
     params::P
     masked::Vector
     mask::Vector
 end
-Base.show(io::IO, kp::EvalKey{P}) where {P} = print(io, scheme_name(P), " evaluation key")
+Base.show(io::IO, kp::KeySwitchKey{P}) where {P} = print(io, scheme_name(P), " key-switching key")
+
+abstract type EvalKey end
+struct EvalMultKey{P <: SHEShemeParams} <: EvalKey
+    key::KeySwitchKey{P}
+end
+
+struct GaloisKey{P <: SHEShemeParams} <: EvalKey
+    galois_element::Int
+    key::KeySwitchKey{P}
+end
+Base.show(io::IO, gk::GaloisKey{P}) where {P} = print(io, scheme_name(P), " galois key (element ", gk.galois_element, ")")
+
+struct GaloisKeys{P <: SHEShemeParams}
+    # Sorted collection of galois keys for various step sizes
+    keys::Vector{GaloisKey{P}}
+end
+Base.show(io::IO, gk::GaloisKey{P}) where {P} = print(io, scheme_name(P), " galois keys (elements ", join(map(k->k.galois_element, gk.keys), ", ", ")"))
 
 struct KeyPair{P <: SHEShemeParams}
     priv::PrivKey{P}
@@ -96,6 +113,7 @@ CipherText{Plain}(params::P, cs::NTuple{N,T}) where {Plain, P <: SHEShemeParams,
 Base.length(c::CipherText) = length(c.cs)
 Base.getindex(c::CipherText, i::Integer) = c.cs[i]
 Base.lastindex(c::CipherText) = length(c)
+Base.broadcastable(c::CipherText) = Ref(c)
 function Base.show(io::IO, kp::CipherText{Enc, P, <:Any, N}) where {P, Enc, N}
     print(io, scheme_name(P), " ciphertext (length ", N)
     Enc != Any && print(io, ", encoding $Enc")
@@ -136,12 +154,14 @@ function encrypt(rng::AbstractRNG, key::PubKey, plaintext)
     c₁ = masked*u + e₁ + π⁻¹(params, plaintext)
     c₂ = mask*u + e₂
 
-    return CipherText(params, (c₁, c₂))
+    EncT = typeof(plaintext)
+    EncT <: NTT.RingElement && (EncT = Any)
+    return CipherText{EncT}(params, (c₁, c₂))
 end
 encrypt(rng::AbstractRNG, kp::KeyPair, plaintext) = encrypt(rng, kp.pub, plaintext)
 encrypt(key::KeyPair, plaintext) = encrypt(Random.GLOBAL_RNG, key, plaintext)
 
-function decrypt(key::PrivKey, c::CipherText)
+function decrypt(key::PrivKey, c::CipherText{T}) where T
     @fields_as_locals key::PrivKey
 
     b = c[1]
@@ -152,25 +172,36 @@ function decrypt(key::PrivKey, c::CipherText)
         spow *= secret
     end
 
-    π(params, b)
+    dec = π(params, b)
+    T === Any ? dec : T(dec)
 end
 decrypt(key::KeyPair, plaintext) = decrypt(key.priv, plaintext)
+
+################################################################################
+#                            error handling
+################################################################################
+
+struct UsageError
+    msg::AbstractString
+end
 
 ################################################################################
 #                        Homomorphic arithmetic
 ################################################################################
 
 for f in (:+, :-)
-    @eval function $f(c1::CipherText{T,N1}, c2::CipherText{T,N2}) where {T,N1,N2}
-        throw(UsageError("Attempting to add ciphertexts with differing parameters"))
-        CipherText((
+    @eval function $f(c1::CipherText{P, Enc, T, N1}, c2::CipherText{P, Enc, T,N2}) where {P, Enc, T, N1, N2}
+        if c1.params !== c2.params
+            throw(UsageError("Attempting to add ciphertexts with differing parameters"))
+        end
+        CipherText{P, Enc, T, max(N1, N2)}(c1.params, tuple((
             i > length(c1) ? c2[i] :
             i > length(c2) ? c1[i] :
-            $f(c1[i], c2[i]) for i in max(N1, N2)))
+            $f(c1[i], c2[i]) for i in 1:max(N1, N2))...))
     end
 end
 
-function *(c1::CipherText{P, Enc, T}, c2::CipherText{P, Enc, T}) where {P, Enc, T}
+function enc_mul(c1, c2)
     if c1.params !== c2.params
         throw(UsageError("Attempting to multiply ciphertexts with differing parameters"))
     end
@@ -184,22 +215,27 @@ function *(c1::CipherText{P, Enc, T}, c2::CipherText{P, Enc, T}) where {P, Enc, 
     end
 
     c = mul_contract(params, c)
+    (c...,)
+end
 
-    CipherText(params, (c...,))
+function *(c1::CipherText{P, Enc, T}, c2::CipherText{P, Enc, T}) where {P, Enc, T}
+    CipherText(c1.params, enc_mul(c1, c2))
 end
 
 ################################################################################
 #                        Key switching
 ################################################################################
 
-function make_eval_key(rng::AbstractRNG, ::Type{EvalKey}, (old, new)::Pair{<:Any, <:PrivKey})
+function make_eval_key(rng::AbstractRNG, (old, new)::Pair{<:Any, <:PrivKey})
     @fields_as_locals new::PrivKey
 
-    𝒰 = RingSampler(ℛ_cipher(params), DiscreteUniform(coefftype(ℛ_cipher(params))))
+    ℛ = ring(old)
+
+    𝒰 = RingSampler(ℛ, DiscreteUniform(coefftype(ℛ)))
     𝒩gen = 𝒩(params)
 
-    nwindows = ndigits(modulus(coefftype(ℛ_cipher(params))), base=2^params.relin_window)
-    evala = [old * coefftype(ℛ_cipher(params))(2)^(i*params.relin_window) for i = 0:nwindows-1]
+    nwindows = ndigits(modulus(coefftype(ℛ)), base=2^params.relin_window)
+    evala = [old * coefftype(ℛ)(2)^(i*params.relin_window) for i = 0:nwindows-1]
     evalb = eltype(evala)[]
 
     for i = 1:length(evala)
@@ -208,26 +244,35 @@ function make_eval_key(rng::AbstractRNG, ::Type{EvalKey}, (old, new)::Pair{<:Any
         push!(evalb, mask)
         evala[i] -= mask*new.secret + e
     end
-    EvalKey(new.params, evala, evalb)
+    KeySwitchKey(new.params, evala, evalb)
 end
-keygen(rng::AbstractRNG, ::Type{EvalKey}, priv::PrivKey) = make_eval_key(rng, EvalKey, priv.secret^2=>priv)
-keygen(::Type{EvalKey}, priv::PrivKey) = keygen(Random.GLOBAL_RNG, EvalKey, priv)
+keygen(rng::AbstractRNG, ::Type{EvalMultKey}, priv::PrivKey) = EvalMultKey(make_eval_key(rng, priv.secret^2=>priv))
+function keygen(rng::AbstractRNG, ::Type{GaloisKey}, priv::PrivKey; galois_element = nothing, steps=nothing)
+    @assert galois_element === nothing || steps === nothing && !(galois_element === nothing && steps === nothing)
+    if galois_element === nothing
+        @assert steps !== nothing
+        galois_element = steps > 0 ? 3^steps : 2degree(ring(priv.params))-3^-steps
+    else
+        @assert steps === nothing
+    end
+    GaloisKey(galois_element, make_eval_key(rng, ToyFHE.NTT.apply_galois_element(priv.secret, galois_element)=>priv))
+end
+keygen(T::Type{<:EvalKey}, priv::PrivKey) = keygen(Random.GLOBAL_RNG, T, priv)
 
-function keyswitch(ek::EvalKey, c::CipherText)
-    @fields_as_locals ek::EvalKey
+function keyswitch(ek::KeySwitchKey, c::CipherText{Enc}) where {Enc}
+    @fields_as_locals ek::KeySwitchKey
 
     @assert length(c.cs) in (2,3)
-    nwindows = ndigits(modulus(coefftype(ℛ_cipher(params))), base=2^params.relin_window)
+    ℛ = ring(c.cs[1])
+    nwindows = ndigits(modulus(coefftype(ℛ)), base=2^params.relin_window)
 
     c1 = c[1]
     c2 = length(c) == 2 ? zero(c[2]) : c[2]
 
     cendcoeffs = NTT.coeffs_primal(c[end])
-    ds = map(cendcoeffs) do x
-        digits(x.n, base=2^params.relin_window, pad=nwindows)
-    end
+    ds = Any[digits(convert(Integer, x), base=2^params.relin_window, pad=nwindows) for x in cendcoeffs]
     ps = map(1:nwindows) do i
-        ℛ_cipher(params)([coefftype(ℛ_cipher(params))(ds[j][i]) for j in eachindex(cendcoeffs)])
+        typeof(ek.mask[1])([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)], nothing)
     end
 
     for i in eachindex(ek.masked)
@@ -235,7 +280,22 @@ function keyswitch(ek::EvalKey, c::CipherText)
         c1 += ek.masked[i] * ps[i]
     end
 
-    CipherText(ek.params, (c1, c2))
+    CipherText{Enc}(ek.params, (c1, c2))
+end
+keyswitch(k::GaloisKey, c::CipherText) = keyswitch(k.key, c)
+keyswitch(k::EvalMultKey, c::CipherText) = keyswitch(k.key, c)
+
+################################################################################
+#     Rotations
+################################################################################
+
+
+################################################################################
+#     Modulus switching
+################################################################################
+
+function modswitch(c::CipherText{Any}, new_modulus)
+    error("Not implemented")
 end
 
 ################################################################################

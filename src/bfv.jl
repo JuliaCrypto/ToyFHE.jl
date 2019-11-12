@@ -25,7 +25,7 @@ end
 
 function π(params::BFVParams, b)
     @fields_as_locals params::BFVParams
-    ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(divround(x, Δ), modulus(base_ring(ℛplain))))), NTT.coeffs_primal(b)))
+    ℛplain(map(x->coefftype(ℛplain)(convert(Integer, mod(SignedMod(divround(x, Δ)), modulus(base_ring(ℛplain))))), NTT.coeffs_primal(b)))
 end
 
 𝒩(params::BFVParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
@@ -196,7 +196,7 @@ Nemo.lift(e::Nemo.nmod) = lift(Nemo.ZZ, e)
 divround(e::Integer, q::Integer) = div(e, q, RoundNearestTiesAway)
 divround(e::fmpz, q::Integer) = divround(BigInt(e), q)
 function divround(e, d::Integer)
-    div(SignedMod(e), d, RoundNearestTiesAway)
+    div(SignedMod(e), d, RoundNearestTiesAway).x
 end
 
 function switchel(T, e)
