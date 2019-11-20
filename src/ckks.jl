@@ -40,23 +40,28 @@ end
 ################################################################################
 
 """
-    FixedRational{T<:Integer, den} <: Real
+    FixedRational{den, T<:Integer} <: Real
 Rational number type, with numerator of type T and fixed denominator `den`.
 """
-struct FixedRational{T, denom}
+struct FixedRational{denom, T}
     x::T
-    Base.reinterpret(::Type{FixedRational{T, denom}}, x::T) where {T,denom} =
-        new{T, denom}(x)
-    function FixedRational{T, denom}(x::Real) where {T, denom}
+    Base.reinterpret(::Type{FixedRational{denom, T}}, x::T) where {T,denom} =
+        new{denom, T}(x)
+    Base.reinterpret(::Type{FixedRational{denom}}, x::T) where {T,denom} =
+        new{denom, T}(x)
+    function FixedRational{denom, T}(x::Real) where {T, denom}
         n = round(BigInt, big(x)*denom)
         if n < 0
             n = modulus(T) + n
         end
-        new{T, denom}(convert(T, n))
+        new{denom, T}(convert(T, n))
     end
 end
+drop_last(::Type{FixedRational{denom, T}}) where {T, denom} = FixedRational{denom, drop_last(T)}
+drop_last(::Type{FixedRational{denom}}) where {denom} = FixedRational{denom}
 
-function Base.convert(::Type{Float64}, fr::FixedRational{T, denom}) where {T, denom}
+
+function Base.convert(::Type{Float64}, fr::FixedRational{denom, T}) where {T, denom}
     n = convert(Integer, fr.x)
     if n > div(modulus(T), 2)
         n = n - modulus(T)
@@ -64,26 +69,35 @@ function Base.convert(::Type{Float64}, fr::FixedRational{T, denom}) where {T, de
     Float64(n/denom)
 end
 
-function Base.show(io::IO, fr::FixedRational{<:Any, denom}) where {denom}
+function Base.show(io::IO, fr::FixedRational{denom}) where {denom}
     print(io, convert(Float64, fr))
 end
 
 function maybe_wide_mul(a::Integer, b::Integer)
     T = promote_type(typeof(a), typeof(b))
     c = widemul(a, b)
-    isa(T, BigInt) && return c
-    c < typemax(T) ? c % T : c
+    isa(T, BigInt) && return Float64(c)
+    c < typemax(T) && return T(c)
+    isa(c, BigInt) && return Float64(c)
+    return c
 end
+maybe_wide_mul(a, b) = a*b
 
 function maybe_wide_sq(a::Integer, b::Integer)
     T = promote_type(typeof(a), typeof(b))
     c = big(a)^b
-    isa(T, BigInt) && return c
-    c < typemax(T) ? c % T : c
+    isa(T, BigInt) && return Float64(c)
+    c < typemax(T) && return T(c)
+    isa(c, BigInt) && return Float64(c)
+    return c
 end
+maybe_wide_sq(a, b) = a^b
 
-Base.:^(a::Type{FixedRational{T, denom}}, b::Int64) where {T,denom} = FixedRational{T, maybe_wide_sq(denom, b)}
-Base.:*(a::Type{FixedRational{T, denom}}, b::Number) where {T,denom} = FixedRational{T, b/denom}
-Base.:*(a::Type{FixedRational{T, denom1}}, b::Type{FixedRational{T, denom2}}) where {T,denom1,denom2} = FixedRational{T, maybe_wide_mul(denom1, denom2)}
-StructArrays.createinstance(FR::Type{FixedRational{T, denom}}, x::T) where {T,denom} =
+Base.:^(a::Type{FixedRational{denom, T}}, b::Int64) where {T,denom} = FixedRational{maybe_wide_sq(denom, b), T}
+Base.:^(a::Type{FixedRational{denom}}, b::Int64) where {T,denom} = FixedRational{maybe_wide_sq(denom, b)}
+Base.:*(a::Type{FixedRational{denom, T}}, b::Number) where {T,denom} = FixedRational{b/denom, T}
+Base.:*(a::Type{FixedRational{denom}}, b::Number) where {T,denom} = FixedRational{b/denom, T}
+Base.:*(a::Type{FixedRational{denom1, T}}, b::Type{FixedRational{denom2, T}}) where {T,denom1,denom2} = FixedRational{maybe_wide_mul(denom1, denom2), T}
+Base.:*(a::Type{FixedRational{denom1}}, b::Type{FixedRational{denom2}}) where {denom1,denom2} = FixedRational{maybe_wide_mul(denom1, denom2)}
+StructArrays.createinstance(FR::Type{FixedRational{denom, T}}, x::T) where {T,denom} =
     reinterpret(FR, x)

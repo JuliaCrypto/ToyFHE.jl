@@ -21,3 +21,5 @@ function Random.rand(rng::Random.AbstractRNG, r::RingSampler)
         sample_ring_array(rng, ℛ, r.coeff_distribution),
         0:degree(modulus(ℛ))-1))
 end
+
+struct Zero; end

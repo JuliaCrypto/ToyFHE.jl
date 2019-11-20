@@ -12,6 +12,7 @@ Base.axes(e::CKKSEncoding) = Base.axes(e.data)
 Base.getindex(e::CKKSEncoding, i::Integer) = Base.getindex(e.data, i)
 Base.setindex!(e::CKKSEncoding, v, i::Integer) = Base.setindex!(e.data, v, i)
 scale(::Type{CKKSEncoding{ScaleT}}) where {ScaleT} = ScaleT
+drop_last(::Type{CKKSEncoding{ScaleT}}) where {ScaleT} = CKKSEncoding{drop_last(ScaleT)}
 
 """
     ℤmstarPermutation
@@ -89,7 +90,7 @@ function Base.convert(T::Type{<:NTT.RingElement}, s::CKKSEncoding{ScaleT}) where
     end
 
     # Encode into the fixed fraction representation
-    encoded = map(ScaleT, nipointsr)
+    encoded = map(ScaleT{eltype(s.PlainT)}, nipointsr)
 
     plaintext = map(x->x.x, encoded)
     s.PlainT(plaintext, nothing)
@@ -102,6 +103,13 @@ function Base.:*(a::CipherText{CKKSEncoding{Tscale}, P, T, N}, b::AbstractFloat)
     CipherText{CKKSEncoding{Tscale^2}, P, T, N}(a.params, map(c->c*scaled, a.cs))
 end
 
+function Base.broadcasted(::typeof(*), a::Array{<:AbstractFloat, 1}, c::CipherText{CKKSEncoding{Tscale}, P, T, N}) where {Tscale, P, T, N}
+    plain = CKKSEncoding{Tscale}(zero(c.cs[1]))
+    plain .= OffsetArray(a, 0:length(a)-1)
+    re = convert(NTT.RingElement, plain)
+    CipherText{CKKSEncoding{Tscale^2}, P, T, N}(c.params, map(c->c*re, c.cs))
+end
+
 function Base.broadcasted(::typeof(+), a::CipherText{CKKSEncoding{Tscale}, P, T, N}, b::AbstractFloat) where {Tscale, P, T, N}
     plain = CKKSEncoding{Tscale}(zero(T))
     plain .= b
@@ -109,8 +117,9 @@ function Base.broadcasted(::typeof(+), a::CipherText{CKKSEncoding{Tscale}, P, T,
 end
 
 # Modswitching a ciphertext
-function modswitch(c::CipherText{CKKSEncoding{Tscale}, P, T, N}) where {TS, scale, Tscale<:FixedRational{TS, scale}, CC<:CRTEncoded, P, T<:NTT.RingElement{<:Any, CC}, N}
-    CipherText{CKKSEncoding{FixedRational{drop_last(TS), scale/modulus(moduli(CC).parameters[end])}}}(c.params, map(modswitch, c.cs))
+function modswitch(c::CipherText{CKKSEncoding{Tscale}, P, T, N}) where {scale, Tscale<:FixedRational{scale}, CC<:CRTEncoded, P, T<:NTT.RingElement{<:Any, CC}, N}
+    CipherText{CKKSEncoding{drop_last(FixedRational{scale/modulus(moduli(CC).parameters[end])})}}(modswitch_drop(c.params),
+        map(modswitch, c.cs))
 end
 
 # Multiplication of ciphertexts

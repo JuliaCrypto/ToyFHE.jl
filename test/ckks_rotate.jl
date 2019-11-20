@@ -15,7 +15,7 @@ ps = nextprime(q₀ + 2N, 1; interval=2N)
 end
 
 scale = 2^60
-Tscale = FixedRational{coefftype(ℛ), scale}
+Tscale = FixedRational{scale}
 
 plain = CKKSEncoding{Tscale}(zero(ℛ))
 plain .= OffsetArray(1:div(N,2), 0:div(N,2)-1)

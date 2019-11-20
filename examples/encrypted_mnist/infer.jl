@@ -98,7 +98,7 @@ N = 2^13
 q₀ = nextprime(Int128(2)^40 + 1, 1; interval=2N)
 ps = nextprime(q₀ + 2N, 1; interval=2N)
 
-q₁ = nextprime(Int128(2)^30 + 1, 1; interval=2N)
+q₁ = nextprime(ps + 2N, 1; interval=2N)
 q₂ = nextprime(q₁ + 2N, 1; interval=2N)
 q₃ = nextprime(q₂ + 2N, 1; interval=2N)
 
@@ -107,13 +107,13 @@ q₃ = nextprime(q₂ + 2N, 1; interval=2N)
     ToyFHE.NegacyclicRing{CT, N}(ζ₂n)
 end
 
-ckks_params = CKKSParams(ℛ, ℛ, 1, 3.2)
+ckks_params = CKKSParams(ℛ, ℛ, 0, 3.2)
 kp = keygen(ckks_params)
 
 Iᵢⱼ = public_preprocess(batch)
 
 scale = Int128(2^40)
-Tscale = FixedRational{coefftype(ckks_params.ℛ), scale}
+Tscale = FixedRational{scale}
 
 C_Iij = map(Iᵢⱼ) do Iij
     plain = CKKSEncoding{Tscale}(zero(plaintext_space(ckks_params)))
@@ -128,18 +128,31 @@ conved2 = map(((x,b),)->x .+ b, zip(conved3, model.layers[1].bias))
 conved1 = map(ToyFHE.modswitch, conved2)
 
 pk′ = PrivKey(ToyFHE.modswitch_drop(kp.priv.params), ToyFHE.modswitch_drop(kp.priv.secret))
+pk′′ = PrivKey(ToyFHE.modswitch_drop(pk′.params), ToyFHE.modswitch_drop(pk′.secret))
+
 ek′ = keygen(EvalMultKey, pk′)
+gk′′ = keygen(GaloisKey, pk′′; steps=64)
 
 Csqed1 = map(x->x*x, conved1)
 Csqed1 = map(x->keyswitch(ek′, x), Csqed1)
+Csqed1 = map(ToyFHE.modswitch, Csqed1)
 
-function encrypted_matmul(weights, x::ToyFHE.CipherText)
-    sum(diag(circshift(weights, (0,(k-1)))).*circshift(x, (k-1,0)) for k = 1:64)
+decrypt(pk′′, Csqed1[1])
+
+function encrypted_matmul(gk, weights, x::ToyFHE.CipherText)
+    result = repeat(diag(weights), 64).*x
+    rotated = x
+    for k = 2:64
+        @show k
+        rotated = ToyFHE.rotate(gk, rotated)
+        result += repeat(diag(circshift(weights, (0,(k-1)))), 64) .* rotated
+    end
+    result
 end
 
 fq1_weights = model.layers[3].W
-fq1 = sum(enumerate(partition(1:256, 64))) do (i,range)
-    encrypted_matmul(fq1_weights[:, range], Csqed1[i])
+Cfq1 = sum(enumerate(partition(1:256, 64))) do (i,range)
+    encrypted_matmul(gk′′, fq1_weights[:, range], Csqed1[i])
 end
 
-decrypt(pk′, Csqed1[1])
+decrypt(pk′′, fq1)

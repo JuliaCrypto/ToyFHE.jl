@@ -29,3 +29,7 @@ include("ckks_triv.jl")
 include("ckks_modswitch.jl")
 
 include("ckks_rotate.jl")
+
+include("ckks_matmul.jl")
+
+include("ckks_modraise.jl")

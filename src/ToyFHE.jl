@@ -4,6 +4,7 @@ export encrypt, decrypt, keygen, keyswitch, PolyCRTEncoding, CKKSEncoding
 export BFVParams, BGVParams, CKKSParams
 export PubKey, PrivKey, EvalKey, EvalMultKey, GaloisKey, GaloisKeys, KeyPair, CipherText
 export modswitch, modswitch_drop
+export ℛ_cipher, ℛ_key, ℛ_plain
 
 export coefftype
 
@@ -33,6 +34,8 @@ include("ckksencoding.jl")
 include("nemo.jl")
 include("encoding.jl")
 include("polycrtencoding.jl")
+include("insecuredebug.jl")
+include("modulusraising.jl")
 
 import .Utils: plaintext_space
 export plaintext_space

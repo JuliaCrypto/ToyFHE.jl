@@ -13,8 +13,8 @@ params = CKKSParams(bfv_params.ℛ, bfv_params.ℛbig, bfv_params.relin_window,
     bfv_params.σ)
 
 scale = 2^40
-Tscale = FixedRational{coefftype(params.ℛ), scale}
-Tscalesq = FixedRational{coefftype(params.ℛ), Int128(scale)^2}
+Tscale = FixedRational{scale}
+Tscalesq = FixedRational{Int128(scale)^2}
 
 plain = CKKSEncoding{Tscale}(zero(plaintext_space(params)))
 plain .= OffsetArray(LinRange(0.0, 1.0, 2048), 0:2047)

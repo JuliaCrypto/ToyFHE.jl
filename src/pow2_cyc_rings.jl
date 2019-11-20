@@ -84,12 +84,17 @@ operations.
     primal::Union{Nothing, OffsetVector{Field, Storage}}
     dual::Union{Nothing, OffsetVector{Field, Storage}}
 end
+coefftype(::Type{<:RingElement{ℛ}}) where {ℛ} = coefftype(ℛ)
 ring(::Type{RingElement{ℛ}}) where {ℛ} = ℛ
 ring(::RingElement{ℛ}) where {ℛ} = ℛ
 degree(r::RingElement) = degree(ring(r))
 
 function Base.convert(::Type{<:RingElement{ℛ₁}}, r::RingElement{ℛ₂}) where {ℛ₁, ℛ₂}
     RingElement{ℛ₁}(map(c->convert(eltype(ℛ₁), c), coeffs_primal(r)), nothing)
+end
+
+function Base.convert(T::Type{<:RingElement{ℛ₁}}, r::RingElement{ℛ₁}) where {ℛ₁}
+    T(r.primal, r.dual)
 end
 
 function Base.convert(::Type{RingElement{ℛ,Field,Storage}}, primal::OffsetVector{Field, Storage}) where {ℛ, Field, Storage}
@@ -103,7 +108,7 @@ function RingElement{ℛ}(primal::Union{Nothing, OffsetVector{Field, Storage}},
 end
 Base.axes(r::RingElement{ℛ}) where {ℛ} = (Base.IdentityUnitRange(0:degree(ℛ)-1),)
 Base.size(r::RingElement{ℛ}) where {ℛ} = map(length, axes(r))
-Base.zero(r::RingElement{ℛ}) where {ℛ} = RingElement{ℛ}(zero(r.primal), nothing)
+Base.zero(r::RingElement{ℛ}) where {ℛ} = RingElement{ℛ}(r.primal === nothing ? zero(r.dual) : zero(r.primal), nothing)
 Base.zero(::Type{<:RingElement{ℛ}}) where {ℛ} = zero(ℛ)
 
 function coeffs_primal(r::RingElement{ℛ}) where {ℛ}

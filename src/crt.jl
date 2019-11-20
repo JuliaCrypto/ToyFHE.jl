@@ -8,6 +8,73 @@ using StructArrays
 struct CRTEncoded{N, M <: NTuple{N, PrimeField}} <: Number
     c::M
 end
+
+"""
+    CRTExpand{T<:PrimeField}
+
+A singleton representing expansion of the CRT basis by adding `T` as an
+additional CRT component. In the integer domain this represents multiplication
+by `modulus(T)`, so this type is used by multiplication with an existing CRT
+encoded value.
+
+# Examples:
+```
+julia> x = CRTEncoded{2, Tuple{𝔽₅, 𝔽₇}}(3)
+CRTEncoded{2,Tuple{𝔽₅,𝔽₇}}((3, 3))
+
+julia> y = CRTExpand{𝔽₁₁}();
+
+julia> x*y
+CRTEncoded{3,Tuple{𝔽₅,𝔽₇,𝔽₁₁}}((3, 5, 0))
+
+julia> convert(Integer, x*y)
+333
+```
+"""
+struct CRTExpand{T<:PrimeField} <: Number; end
+Base.convert(::Type{Integer}, c::CRTExpand{T}) where {T} = modulus(T)
+
+function Base.:*(a::CRTEncoded{N, M}, b::CRTExpand{T}) where {T,N,M}
+    CRTEncoded{N+1, Tuple{M.parameters..., T}}(tuple((convert(Integer, b) * a).c..., zero(T)))
+end
+
+"""
+    CRTResidual{T<:PrimeField}
+
+Represents the value c*[(q/q_i)^{-1}]_{q_i} q/q_i where `q_i=modulus(c)` and `q`
+is the modulus of some larger CRT representation. That CRT representation is
+not represented in this type and may thus be.
+
+# Example:
+```julia
+julia> r = CRTResidual(𝔽₃(3))
+
+julia> convert(Integer, CRTEncoded{3, Tuple{𝔽₃, 𝔽₅, 𝔽₇}}(r))
+308
+
+julia> mod(3*invmod(77, 5), 5)*77
+308
+```
+"""
+struct CRTResidual{T<:PrimeField}
+    c::T
+end
+
+function CRTEncoded{N, M}(c::CRTResidual{T}) where {N,M<:NTuple{N, PrimeField},T}
+    found = false
+    ret = CRTEncoded{N, M}(tuple(map(M.parameters) do F
+        if F == T
+            @assert !found
+            found = true
+            c.c
+        else
+            F(0)
+        end
+    end...))
+    @assert found
+    ret
+end
+
 Base.getproperty(c::CRTEncoded, i::Int64) = c.c[i]
 NTT.modulus(::Type{CRTEncoded{N,mods}}) where {N,mods} = prod(x->BigInt(NTT.modulus(x)), fieldtypes(mods))
 NTT.modulus(c::CRTEncoded) = NTT.modulus(typeof(c))
@@ -51,7 +118,7 @@ function Base.:+(a::CRTEncoded{N, moduli}, b::CRTEncoded{N, moduli}) where {T,N,
 end
 
 function Base.:*(a::CRTEncoded{N, moduli}, b::CRTEncoded{N, moduli}) where {N,moduli}
-    CRTEncoded{N, moduli}(a.c .* b.c)
+    CRTEncoded{N, moduli}(map(*, a.c, b.c))
 end
 
 function Base.:-(a::CRTEncoded{N, moduli}) where {N,moduli}
@@ -87,6 +154,30 @@ end
 
 # Modswitch to next modulus in CRT chain
 
+struct DropLastParams{P<:SHEShemeParams} <: SHEShemeParams
+    params::P
+end
+modswitch_drop(params::SHEShemeParams) = DropLastParams(params)
+scheme_name(::Type{DropLastParams{P}}) where P = scheme_name(P)
+ℛ_plain(p::DropLastParams) = ℛ_plain(p.params)
+ℛ_cipher(p::DropLastParams) = drop_last(ℛ_cipher(p.params))
+relin_window(p::DropLastParams) = relin_window(p.params)
+
+π⁻¹(p::DropLastParams, plaintext) = modswitch_drop(π⁻¹(p.params, plaintext))
+π(p::DropLastParams, b) = b
+
+struct DropLastSampler{Ring} <: Random.Sampler{Ring}
+    s::Union{RingSampler{Ring}, DropLastSampler{Ring}}
+end
+
+function Random.rand(rng::Random.AbstractRNG, r::DropLastSampler)
+    # TODO: We could just directly generate the appropriate ring element here.
+    modswitch_drop(rand(rng, r.s))
+end
+
+𝒩(p::DropLastParams) = DropLastSampler(𝒩(p.params))
+𝒢(p::DropLastParams) = DropLastSampler(𝒢(p.params))
+
 drop_last(::Type{CRTEncoded{N,M}}) where {N,M} = CRTEncoded{N-1,Tuple{M.parameters[1:end-1]...}}
 function drop_last(ℛ::NegacyclicRing{T, N}) where {T<:CRTEncoded, N}
     T′ = drop_last(T)
@@ -110,6 +201,10 @@ end
 
 function modswitch_drop(re::NTT.RingElement{ℛ, Field}) where {ℛ, Field <: CRTEncoded}
     NTT.RingElement{drop_last(ℛ)}(map(modswitch_drop, NTT.coeffs_primal(re)), nothing)
+end
+
+function modswitch_drop(c::CipherText{Enc}) where {Enc}
+    CipherText{drop_last(Enc)}(modswitch_drop(c.params), map(modswitch_drop, c.cs))
 end
 
 # Integration with NTT

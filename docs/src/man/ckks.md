@@ -244,8 +244,8 @@ that do all of this encoding and decoding for you:
 
 ```julia
 scale = 2^35
-Tscale = FixedRational{coefftype(ckksp.ℛ), scale}
-Tscalesq = FixedRational{coefftype(ckksp.ℛ), Int128(scale)^2}
+Tscale = FixedRational{scale}
+Tscalesq = FixedRational{Int128(scale)^2}
 
 plain1 = CKKSEncoding{Tscale}(zero(plaintext_space(ckksp)))
 plain1 .= OffsetArray(LinRange(0.0, 2.0, 2048), 0:2047)
