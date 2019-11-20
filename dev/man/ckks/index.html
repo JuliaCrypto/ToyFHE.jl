@@ -120,8 +120,8 @@ fft(collect(ψ(dec_raw)))[1:2048]
                         ⋮</code></pre><p>which compares quite favourably to the true answer:</p><pre><code class="language-julia">julia&gt; LinRange(0.0, 2.0, 2048) * 2.0
 2048-element LinRange{Float64}:
  0.0,0.00195408,0.00390816,0.00586224,0.00781632,0.00977040,0.0117245,0.0136786,0.0156326,…,3.98046,3.98241,3.98437,3.98632,3.98828,3.99023,3.99218,3.99414,3.99609,3.99805,4.0</code></pre><p>(to a precision of about 10^-6).</p><p>Of course, this is all a bit complicated, so the library provides utilities that do all of this encoding and decoding for you:</p><pre><code class="language-julia">scale = 2^35
-Tscale = FixedRational{coefftype(ckksp.ℛ), scale}
-Tscalesq = FixedRational{coefftype(ckksp.ℛ), Int128(scale)^2}
+Tscale = FixedRational{scale}
+Tscalesq = FixedRational{Int128(scale)^2}
 
 plain1 = CKKSEncoding{Tscale}(zero(plaintext_space(ckksp)))
 plain1 .= OffsetArray(LinRange(0.0, 2.0, 2048), 0:2047)
