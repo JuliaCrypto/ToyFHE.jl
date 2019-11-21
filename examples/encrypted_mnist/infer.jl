@@ -61,7 +61,7 @@ function public_preprocess(batch)
     I = [[batch[i′*3 .+ (1:7), j′*3 .+ (1:7), 1, k] for i′=ka, j′=ka] for k = 1:64]
 
     # Reshape into the ciphertext
-    Iᵢⱼ = [[I[k][l...][i,j] for l=product(ka, ka), k=1:64] for i=1:7, j=1:7]
+    Iᵢⱼ = [[I[k][l...][i,j] for k=1:64, l=product(ka, ka)] for i=1:7, j=1:7]
 end
 
 function do_encrypted_inference(model, batch)
@@ -73,7 +73,7 @@ function do_encrypted_inference(model, batch)
     conved = [sum(Iᵢⱼ[i,j]*conv_weights[i,j,1,channel] for i=1:7, j=1:7) for channel = 1:4]
     conved = map(((x,b),)->x .+ b, zip(conved, model.layers[1].bias))
     sqed1 = map(x->x.^2, conved)
-    sqed1 = map(x->reshape(x, 64, 64), sqed1)
+    sqed1 = map(x->reshape(x, 64, 64)', sqed1)
     fq1_weights = model.layers[3].W
     fq1 = sum(enumerate(partition(1:256, 64))) do (i,range)
         encrypted_matmul(fq1_weights[:, range], sqed1[i])
@@ -95,19 +95,21 @@ batch = test_set[1][1]
 # For now, we match the parameters of [JKLS19] and see how far we get
 
 N = 2^13
-q₀ = nextprime(Int128(2)^40 + 1, 1; interval=2N)
+q₀ = nextprime(Int128(2)^60 + 1, 1; interval=2N)
 ps = nextprime(q₀ + 2N, 1; interval=2N)
 
-q₁ = nextprime(ps + 2N, 1; interval=2N)
+q₁ = nextprime(2^40 + 1, 1; interval=2N)
 q₂ = nextprime(q₁ + 2N, 1; interval=2N)
 q₃ = nextprime(q₂ + 2N, 1; interval=2N)
+q₄ = nextprime(q₃ + 2N, 1; interval=2N)
+q₅ = nextprime(q₄ + 2N, 1; interval=2N)
 
-ℛ = let CT = ToyFHE.CRTEncoded{5, Tuple{GaloisField.((q₀,q₁,q₂,q₃,ps))...}}
+ℛ = let CT = ToyFHE.CRTEncoded{7, Tuple{GaloisField.((q₀,q₁,q₂,q₃,q₄,q₅,ps))...}}
     ζ₂n = GaloisFields.minimal_primitive_root(CT, 2N)
     ToyFHE.NegacyclicRing{CT, N}(ζ₂n)
 end
 
-ckks_params = CKKSParams(ℛ, ℛ, 0, 3.2)
+ckks_params = ModulusRaised(CKKSParams(ℛ, ℛ, 0, 3.2))
 kp = keygen(ckks_params)
 
 Iᵢⱼ = public_preprocess(batch)
@@ -127,32 +129,78 @@ conved3 = [sum(C_Iij[i,j]*conv_weights[i,j,1,channel] for i=1:7, j=1:7) for chan
 conved2 = map(((x,b),)->x .+ b, zip(conved3, model.layers[1].bias))
 conved1 = map(ToyFHE.modswitch, conved2)
 
-pk′ = PrivKey(ToyFHE.modswitch_drop(kp.priv.params), ToyFHE.modswitch_drop(kp.priv.secret))
-pk′′ = PrivKey(ToyFHE.modswitch_drop(pk′.params), ToyFHE.modswitch_drop(pk′.secret))
-
-ek′ = keygen(EvalMultKey, pk′)
-gk′′ = keygen(GaloisKey, pk′′; steps=64)
+ek = keygen(EvalMultKey, kp.priv)
+gk = keygen(GaloisKey, kp.priv; steps=64)
 
 Csqed1 = map(x->x*x, conved1)
-Csqed1 = map(x->keyswitch(ek′, x), Csqed1)
+Csqed1 = map(x->keyswitch(ek, x), Csqed1)
 Csqed1 = map(ToyFHE.modswitch, Csqed1)
 
-decrypt(pk′′, Csqed1[1])
+decrypt(kp, Csqed1[1])
 
 function encrypted_matmul(gk, weights, x::ToyFHE.CipherText)
-    result = repeat(diag(weights), 64).*x
+    result = repeat(diag(weights), inner=64).*x
     rotated = x
     for k = 2:64
         @show k
         rotated = ToyFHE.rotate(gk, rotated)
-        result += repeat(diag(circshift(weights, (0,(k-1)))), 64) .* rotated
+        result += repeat(diag(circshift(weights, (0,(k-1)))), inner=64) .* rotated
     end
     result
 end
 
+decrypt_matrix(kp, xx) = reshape(collect(decrypt(kp, xx)), (64, 64))'
+
 fq1_weights = model.layers[3].W
+reshape(collect(decrypt(kp, encrypted_matmul(gk, fq1_weights[:, 1:64], Csqed1[1]))), (64, 64))'
+fq1_weights[:, 1:64] * reshape(collect(decrypt(kp, Csqed1[1])), (64, 64))'
+
 Cfq1 = sum(enumerate(partition(1:256, 64))) do (i,range)
-    encrypted_matmul(gk′′, fq1_weights[:, range], Csqed1[i])
+    encrypted_matmul(gk, fq1_weights[:, range], Csqed1[i])
 end
 
-decrypt(pk′′, fq1)
+Cfq1 = Cfq1 .+ OffsetArray(repeat(model.layers[3].b, inner=64), 0:4095)
+Cfq1 = modswitch(Cfq1)
+
+Csqed2 = Cfq1*Cfq1
+Csqed2 = keyswitch(ek, Csqed2)
+Csqed2 = modswitch(Csqed2)
+
+function naive_rectangular_matmul(gk, weights, x)
+    @assert size(weights, 1) < size(weights, 2)
+    weights = vcat(weights, zeros(eltype(weights), size(weights, 2)-size(weights, 1), size(weights, 2)))
+    encrypted_matmul(gk, weights, x)
+end
+
+fq2_weights = model.layers[4].W
+Cresult = naive_rectangular_matmul(gk, fq2_weights, Csqed2)
+Cresult = Cresult .+ OffsetArray(repeat(vcat(model.layers[4].b, zeros(54)), inner=64), 0:4095)
+
+plain_result = model(batch)
+enc_result = real.(decrypt_matrix(Cresult))
+
+function compare_models(test_imgs, test_labels, plain_result, enc_result, plain_label, enc_label)
+    print(" "^14)
+    display(reduce(hcat, test_imgs[1:64]))
+    println()
+    ground_truth = test_labels[idx]
+    print("Ground truth:  ")
+    print(join(test_labels[1:64], " "))
+    println()
+    print(rpad(plain_label, 15))
+    for idx = 1:64
+        label = argmax(plain_result[:,idx])-1
+        printstyled(label, color = label == test_labels[idx] ? :green : red)
+        print(" ")
+    end
+    println()
+    print(rpad(enc_label, 15))
+    for idx = 1:64
+        label = argmax(enc_result[:,idx])-1
+        printstyled(label, color = label == test_labels[idx] ? :green : red)
+        print(" ")
+    end
+    println()
+end
+
+compare_models(test_imgs, test_labels, model(batch), real.(decrypt_matrix(kp, Cresult)), "Model (Plain):", "Model (Enc):")

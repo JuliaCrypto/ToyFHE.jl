@@ -18,6 +18,7 @@ scheme_name(::Type{ModulusRaised{P}}) where P = string(scheme_name(P), " (with s
 # The special prime is reserved for keys, so the ciphertext ring is the subring
 # with the last crt component droppped.
 ℛ_cipher(params::ModulusRaised) = drop_last(ℛ_cipher(parent_params(params)))
+ℛ_plain(params::ModulusRaised{<:CKKSParams}) = drop_last(ℛ_plain(parent_params(params)))
 
 function encrypt(rng::AbstractRNG, key::PubKey{P}, ::Zero) where {P<:ModulusRaised}
     c = encrypt(rng, PubKey(parent_params(key.params), key.key), Zero())
@@ -30,8 +31,19 @@ function make_eval_key(rng::AbstractRNG, (old, new)::Pair{<:Any, P}) where {P<:P
     KeySwitchKey(new.params, make_eval_key(rng, ps*old=>parent_new).key)
 end
 
+
 function keyswitch_expand(ek::KeySwitchKey{<:ModulusRaised}, c)
-    𝔽ps = moduli(eltype(eltype(ek.key[1].mask))).parameters[end]
-    typeof(ek.key[1].mask)(c .* CRTExpand{𝔽ps}(), nothing)
+    ℛkey = typeof(ek.key[1].mask)
+    key_moduli = moduli(coefftype(ℛkey)).parameters
+    𝔽ps = key_moduli[end]
+    ℛexpanded = crtselect(typeof(ek.key[1].mask), [1:length(moduli(c).parameters); length(key_moduli)])
+    ℛexpanded(c .* CRTExpand{𝔽ps}(), nothing)
 end
 keyswitch_contract(ek::KeySwitchKey{<:ModulusRaised}, c) = modswitch(c)
+function downswitch_keyelement(params::ModulusRaised, key::KeyComponent, elt)
+    which = [1:length(moduli(elt).parameters)-1; length(moduli(key.mask).parameters)]
+    KeyComponent(
+        crtselect(key.mask, which),
+        crtselect(key.masked, which)
+    )
+end

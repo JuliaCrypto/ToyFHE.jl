@@ -299,7 +299,7 @@ function keygen(rng::AbstractRNG, ::Type{GaloisKey}, priv::PrivKey; galois_eleme
     @assert galois_element === nothing || steps === nothing && !(galois_element === nothing && steps === nothing)
     if galois_element === nothing
         @assert steps !== nothing
-        galois_element = mod(steps > 0 ? 2degree(priv.secret)-3^steps : 3^-steps, 2degree(priv.secret))
+        galois_element = mod(steps > 0 ? 3^(2degree(priv.secret)-steps) : 3^-steps, 2degree(priv.secret))
     else
         @assert steps === nothing
     end
@@ -309,6 +309,7 @@ keygen(T::Type{<:EvalKey}, priv::PrivKey; kwargs...) = keygen(Random.GLOBAL_RNG,
 
 keyswitch_expand(ek, re) = re
 keyswitch_contract(ek, c) = c
+downswitch_keyelement(params, key::KeyComponent, elt) = key
 function keyswitch(ek::KeySwitchKey, c::CipherText{Enc}) where {Enc}
     @fields_as_locals ek::KeySwitchKey
 
@@ -318,28 +319,29 @@ function keyswitch(ek::KeySwitchKey, c::CipherText{Enc}) where {Enc}
     any_mask = ek.key[1].mask
 
     c1 = keyswitch_expand(ek, c[1])
-    c2 = length(c) == 2 ? zero(any_mask) : c[2]
+    c2 = length(c) == 2 ? zero(c1) : keyswitch_expand(ek, c[2])
 
     if relin_window(params) == 0
         # CRT basis decomposition
         cendcoeffs = NTT.coeffs_primal(c[end])
-        ps = [typeof(any_mask)(eltype(any_mask).(convert.(Integer, SignedMod.(OffsetArray(arr, axes(cendcoeffs))))), nothing) for arr in StructArrays.fieldarrays(parent(cendcoeffs))]
+        ps = [typeof(c1)(eltype(c1).(convert.(Integer, SignedMod.(OffsetArray(arr, axes(cendcoeffs))))), nothing) for arr in StructArrays.fieldarrays(parent(cendcoeffs))]
     else
         # digit-wise decomposition
         cendcoeffs = NTT.coeffs_primal(c[end])
         nwindows = ndigits(modulus(coefftype(ℛ)), base=2^relin_window(params))
         ds = Any[digits(convert(Integer, x), base=2^relin_window(params), pad=nwindows) for x in cendcoeffs]
         ps = map(1:nwindows) do i
-            typeof(any_mask)([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)], nothing)
+            typeof(c1)([coefftype(ℛ)(ds[j][i]) for j in eachindex(cendcoeffs)], nothing)
         end
     end
 
     for i in eachindex(ps)
-        c2 += ek.key[i].mask * ps[i]
-        c1 += ek.key[i].masked * ps[i]
+        key = downswitch_keyelement(ek.params, ek.key[i], typeof(ps[i]))
+        c2 += key.mask * ps[i]
+        c1 += key.masked * ps[i]
     end
 
-    CipherText{Enc}(ek.params, (keyswitch_contract(ek, c1), keyswitch_contract(ek, c2)))
+    CipherText{Enc}(c.params, (keyswitch_contract(ek, c1), keyswitch_contract(ek, c2)))
 end
 keyswitch(k::GaloisKey, c::CipherText) = keyswitch(k.key, c)
 keyswitch(k::EvalMultKey, c::CipherText) = keyswitch(k.key, c)

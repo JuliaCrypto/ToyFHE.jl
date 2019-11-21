@@ -99,7 +99,7 @@ end
 
 # Multiplication with plaintext scalars
 function Base.:*(a::CipherText{CKKSEncoding{Tscale}, P, T, N}, b::AbstractFloat) where {Tscale, P, T, N}
-    scaled = convert(Integer, Tscale(b).x)
+    scaled = convert(Integer, Tscale{coefftype(T)}(b).x)
     CipherText{CKKSEncoding{Tscale^2}, P, T, N}(a.params, map(c->c*scaled, a.cs))
 end
 
@@ -113,6 +113,13 @@ end
 function Base.broadcasted(::typeof(+), a::CipherText{CKKSEncoding{Tscale}, P, T, N}, b::AbstractFloat) where {Tscale, P, T, N}
     plain = CKKSEncoding{Tscale}(zero(T))
     plain .= b
+    CipherText{CKKSEncoding{Tscale}, P, T, N}(a.params, (a.cs[1] + convert(T, plain), a.cs[2:end]...))
+end
+
+function Base.broadcasted(::typeof(+), a::CipherText{CKKSEncoding{Tscale}, P, T, N}, b::AbstractArray{<:AbstractFloat, 1}) where {Tscale, P, T, N}
+    plain = CKKSEncoding{Tscale}(zero(T))
+    plain .= b
+    @show typeof(convert(T, plain))
     CipherText{CKKSEncoding{Tscale}, P, T, N}(a.params, (a.cs[1] + convert(T, plain), a.cs[2:end]...))
 end
 

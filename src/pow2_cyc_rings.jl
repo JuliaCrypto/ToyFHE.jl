@@ -109,7 +109,7 @@ end
 Base.axes(r::RingElement{ℛ}) where {ℛ} = (Base.IdentityUnitRange(0:degree(ℛ)-1),)
 Base.size(r::RingElement{ℛ}) where {ℛ} = map(length, axes(r))
 Base.zero(r::RingElement{ℛ}) where {ℛ} = RingElement{ℛ}(r.primal === nothing ? zero(r.dual) : zero(r.primal), nothing)
-Base.zero(::Type{<:RingElement{ℛ}}) where {ℛ} = zero(ℛ)
+Base.zero(T::Type{<:RingElement{ℛ}}) where {ℛ} = T(OffsetArray(zeros(eltype(ℛ), degree(ℛ)), 0:degree(ℛ)-1), nothing)
 
 function coeffs_primal(r::RingElement{ℛ}) where {ℛ}
     if r.primal === nothing

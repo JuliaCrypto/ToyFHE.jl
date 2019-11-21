@@ -39,3 +39,7 @@ rt = let c = encrypt(kp, plain)
     decrypt(kp, c′)
 end
 @test rt ≈ circshift(plain, -1)
+
+let gk = ToyFHE.keygen(GaloisKey, kp.priv; steps=1)
+    @test decrypt(kp, ToyFHE.rotate(gk, encrypt(kp, plain))) ≈ circshift(plain, 1)
+end

@@ -96,4 +96,11 @@ function Base.convert(::Type{OffsetArray{T, N, A1}}, A::OffsetArray{T, N, A2}) w
     OffsetArray{T, N, A1}(convert(A1, A.parent), A.offsets)
 end
 
+#Hack
+function Base.similar(::Type{<:StructArray{S, N}}, T::Type) where {S, N}
+    C = Tuple{map(x->Array{x, N}, StructArrays.staticschema(T).parameters)...}
+    I = StructArrays.index_type(C)
+    StructArray{T, N, C, I}
+end
+
 end

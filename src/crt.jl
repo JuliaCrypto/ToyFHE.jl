@@ -79,6 +79,9 @@ Base.getproperty(c::CRTEncoded, i::Int64) = c.c[i]
 NTT.modulus(::Type{CRTEncoded{N,mods}}) where {N,mods} = prod(x->BigInt(NTT.modulus(x)), fieldtypes(mods))
 NTT.modulus(c::CRTEncoded) = NTT.modulus(typeof(c))
 moduli(::Type{CRTEncoded{N,mods}}) where {N,mods} = mods
+moduli(::Type{T}) where {T<:NTT.RingElement} where {N,mods} = moduli(coefftype(T))
+moduli(::T) where {T<:NTT.RingElement} where {N,mods} = moduli(T)
+moduli(::NegacyclicRing{BaseRing}) where {BaseRing} = moduli(BaseRing)
 
 function Base.promote_rule(::Type{CRTEncoded{N, moduli}}, ::Type{<:Integer}) where {N, moduli}
     CRTEncoded{N, moduli}
@@ -178,11 +181,35 @@ end
 𝒩(p::DropLastParams) = DropLastSampler(𝒩(p.params))
 𝒢(p::DropLastParams) = DropLastSampler(𝒢(p.params))
 
-drop_last(::Type{CRTEncoded{N,M}}) where {N,M} = CRTEncoded{N-1,Tuple{M.parameters[1:end-1]...}}
-function drop_last(ℛ::NegacyclicRing{T, N}) where {T<:CRTEncoded, N}
-    T′ = drop_last(T)
-    NegacyclicRing{T′, N}(T′(ℛ.ψ.c[1:end-1]))
+function crtselect(::Type{CRTEncoded{N,M}}, which) where {N,M}
+    CRTEncoded{length(which),Tuple{M.parameters[which]...}}
 end
+
+function crtselect(ℛ::NegacyclicRing{T, N}, which) where {T<:CRTEncoded, N}
+    T′ = crtselect(T, which)
+    NegacyclicRing{T′, N}(T′(ℛ.ψ.c[which]))
+end
+
+function crtselect(::Type{NTT.RingElement{ℛ, Field, Storage}}, which) where {ℛ, Field, Storage}
+    ℛnew = crtselect(ℛ, which)
+    NTT.RingElement{ℛnew, coefftype(ℛnew), similar(Storage, coefftype(ℛnew))}
+end
+
+function crtselect(x::NTT.RingElement{ℛ, Field, Storage}, which) where {ℛ, Field, Storage}
+    ℛnew = crtselect(ℛ, which)
+    newA = similar(Storage, coefftype(ℛnew))
+    newAConstruct = StructArray{newA.parameters[1:3]...}
+    primaly = dualy = nothing
+    if x.primal !== nothing
+        primaly = OffsetArray(newAConstruct(fieldarrays(parent(x.primal))[which]), axes(x.primal))
+    end
+    if x.dual !== nothing
+        dualy = OffsetArray(newAConstruct(fieldarrays(parent(x.dual))[which]), axes(x.dual))
+    end
+    NTT.RingElement{ℛnew, coefftype(ℛnew), newA}(primaly,dualy)
+end
+
+drop_last(x) = crtselect(x, 1:(length(moduli(x).parameters)-1))
 
 function modswitch(crt::CRTEncoded)
     ct_qk = crt.c[end]
@@ -205,6 +232,14 @@ end
 
 function modswitch_drop(c::CipherText{Enc}) where {Enc}
     CipherText{drop_last(Enc)}(modswitch_drop(c.params), map(modswitch_drop, c.cs))
+end
+
+function downswitch_keyelement(params, key::KeyComponent, elt::NTT.RingElement{<:Any, <:CRTEncoded})
+    length(moduli(key.mask).parameters) == length(moduli(elt).parameters) && return key
+    KeyComponent(
+        crtselect(key.mask, 1:length(moduli(elt).parameters)),
+        crtselect(key.masked, 1:length(moduli(elt).parameters))
+    )
 end
 
 # Integration with NTT
