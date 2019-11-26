@@ -17,7 +17,7 @@ ps = nextprime(q₁ + 2N, 1; interval=2N)
     ToyFHE.NegacyclicRing{CT, N}(ζ₂n)
 end
 
-ckks_params = ModulusRaised(CKKSParams(ℛ, ℛ, 0, 3.2))
+ckks_params = ModulusRaised(CKKSParams(ℛ, 0, 3.2))
 kp = keygen(ckks_params)
 
 scale = 2^40

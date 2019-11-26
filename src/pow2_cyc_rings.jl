@@ -64,6 +64,16 @@ end
 degree(ℛ::NegacyclicRing{F,N}) where {F,N} = N
 Base.eltype(ℛ::NegacyclicRing{F,N}) where {F,N} = F
 
+as_subscript(p) = replace(string(p), r"[0-9]" => x->['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'][parse(Int,x) + 1])
+as_superscript(p) = replace(string(p), r"[0-9]" => x->['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'][parse(Int,x) + 1])
+function Base.show(io::IO, ℛ::NegacyclicRing{F,N}) where {F,N}
+    print(io, "ℤ")
+    print(io, as_subscript(modulus(F)))
+    print(io, "/(x")
+    print(io, as_superscript(N))
+    print(io, " + 1)")
+end
+
 function (ℛ::NegacyclicRing)(coeffs::OffsetVector)
     RingElement{ℛ}(coeffs, nothing)
 end

@@ -25,7 +25,7 @@ re = convert(ToyFHE.NTT.RingElement, plain)
 @test CKKSEncoding{Tscale}(ToyFHE.NTT.apply_galois_element(re, 3)) ≈ circshift(plain, -1)
 
 # The same, but encrypted
-ckks_params = CKKSParams(ℛ, ℛ, 1, 3.2)
+ckks_params = CKKSParams(ℛ, 1, 3.2)
 kp = keygen(ckks_params)
 
 function ToyFHE.NTT.apply_galois_element(c::CipherText{Enc}, galois_element) where {Enc}

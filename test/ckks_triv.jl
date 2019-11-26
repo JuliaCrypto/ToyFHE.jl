@@ -9,7 +9,7 @@ bfv_params = BFVParams(
     ; eval_mult_count = 3
 )
 
-params = CKKSParams(bfv_params.ℛ, bfv_params.ℛbig, bfv_params.relin_window,
+params = CKKSParams(bfv_params.ℛ, bfv_params.relin_window,
     bfv_params.σ)
 
 scale = 2^40

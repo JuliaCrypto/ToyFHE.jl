@@ -23,7 +23,7 @@ plain .= OffsetArray(1:div(N,2), 0:div(N,2)-1)
 
 plain_matrix = ones(Float32, 4, 4)
 
-ckks_params = CKKSParams(ℛ, ℛ, 1, 3.2)
+ckks_params = CKKSParams(ℛ, 1, 3.2)
 kp = keygen(ckks_params)
 
 c = encrypt(kp, plain)

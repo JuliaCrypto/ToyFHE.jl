@@ -4,6 +4,7 @@ using GaloisFields
 using GaloisFields: PrimeField
 using Random
 using StructArrays
+using Primes
 
 struct CRTEncoded{N, M <: NTuple{N, PrimeField}} <: Number
     c::M
@@ -276,3 +277,22 @@ end
 function sample_ring_array(rng::Random.AbstractRNG, ℛ::NegacyclicRing{<:CRTEncoded{N, moduli}}, coeff_distribution) where {N,moduli}
     StructArray(coefftype(ℛ)(rand(rng, coeff_distribution)) for _ in 1:degree(modulus(ℛ)))
 end
+
+# NegacyclicRing constructor for CRT form
+function NegacyclicRing(N::Integer, logqs::NTuple{Q, Integer}) where Q
+    perm = sortperm(collect(logqs))
+    primes = BigInt[]
+    lastp::BigInt = 0
+    for logq in logqs[perm]
+        p = nextprime(max(big(2)^logq+1, lastp+2N); interval=2N)
+        lastp = p
+        push!(primes, p)
+    end
+    primes = primes[invperm(perm)]
+    CT = CRTEncoded{Q, Tuple{GaloisField.(primes)...}}
+    ζm = GaloisFields.minimal_primitive_root(CT, 2N)
+    NegacyclicRing{CT, N}(ζm)
+end
+
+# For CRT encoded coefficients, default relinearization to just using the CRT basis
+default_relin_window(::NegacyclicRing{<:CRTEncoded}) = 0

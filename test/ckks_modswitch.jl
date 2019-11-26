@@ -24,7 +24,7 @@ Tscale2 = FixedRational{scale/ps}
 @test isapprox(CKKSEncoding{Tscale2}(ToyFHE.modswitch(convert(ToyFHE.NTT.RingElement, plain)))[0], 2.0; atol=10^-5)
 
 # The same but with encryption noise
-ckks_params = CKKSParams(ℛ, ℛ, 1, 3.2)
+ckks_params = CKKSParams(ℛ, 1, 3.2)
 kp = keygen(ckks_params)
 
 switched = let c = ToyFHE.modswitch(encrypt(kp, plain))

@@ -136,6 +136,7 @@ CipherText(params::P, cs::NTuple{N,T}) where {P <: SHEShemeParams,T,N} =
     CipherText{Any,P,T,N}(params, cs)
 CipherText{Plain}(params::P, cs::NTuple{N,T}) where {Plain, P <: SHEShemeParams,T,N} =
     CipherText{Plain,P,T,N}(params, cs)
+ring(c::CipherText) = ring(c.cs[1])
 
 Base.length(c::CipherText) = length(c.cs)
 Base.getindex(c::CipherText, i::Integer) = c.cs[i]
@@ -193,7 +194,7 @@ function encrypt(rng::AbstractRNG, key::PubKey, plaintext)
     return CipherText{EncT}(key.params, c.cs)
 end
 encrypt(rng::AbstractRNG, kp::KeyPair, plaintext) = encrypt(rng, kp.pub, plaintext)
-encrypt(key::KeyPair, plaintext) = encrypt(Random.GLOBAL_RNG, key, plaintext)
+encrypt(key::Union{KeyPair, PubKey}, plaintext) = encrypt(Random.GLOBAL_RNG, key, plaintext)
 
 function decrypt(key::PrivKey, c::CipherText{T}) where T
     @fields_as_locals key::PrivKey
@@ -267,6 +268,7 @@ end
 ################################################################################
 #                        Key switching
 ################################################################################
+default_relin_window(ℛ) = 1
 
 function make_eval_key(rng::AbstractRNG, (old, new)::Pair{<:Any, <:PrivKey})
     @fields_as_locals new::PrivKey
@@ -355,6 +357,7 @@ function NTT.apply_galois_element(c::CipherText{Enc}, galois_element) where {Enc
 end
 
 rotate(gk::GaloisKey, c::CipherText) = keyswitch(gk, NTT.apply_galois_element(c, gk.galois_element))
+Base.circshift(c::CipherText, gk::GaloisKey) = rotate(gk, c)
 
 ################################################################################
 #     Modulus switching

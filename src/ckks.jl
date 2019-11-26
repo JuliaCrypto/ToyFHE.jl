@@ -7,11 +7,10 @@ export CKKSParams, FixedRational
 struct CKKSParams <: SHEShemeParams
     # The Cypertext ring over which operations are performed
     ℛ
-    # The big ring used during multiplication
-    ℛbig
-    relin_window
-    σ
+    relin_window::Int
+    σ::Float64
 end
+CKKSParams(ℛ, relin_window=default_relin_window(ℛ), σ=8/sqrt(2pi)) = CKKSParams(ℛ, relin_window, σ)
 scheme_name(p::Type{CKKSParams}) = "CKKS"
 
 # From the RLWE perspective, ℛ is both the plain and ciphertext. The encoder
@@ -24,16 +23,6 @@ scheme_name(p::Type{CKKSParams}) = "CKKS"
 
 𝒩(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
 𝒢(params::CKKSParams) = RingSampler(params.ℛ, DiscreteNormal(0, params.σ))
-
-#=
-mul_expand(params::CKKSParams, c::CipherText) = map(c->switch(params.ℛbig, c), c.cs)
-function mul_contract(params::CKKSParams, c)
-    @fields_as_locals params::CKKSParams
-    map(c) do e
-        switch(ℛ, e)
-    end
-end
-=#
 
 ################################################################################
 #                        CKKS Scheme definition
