@@ -108,7 +108,7 @@ in the details. This presentation most closely matches BGV. For two ciphertext
 
 ```julia
 c₀′ = c₀ * d₀
-c₁′ = c₀ * d₁ + d₀ + c₁
+c₁′ = (c₀ * d₁) + (d₀ * c₁)
 c₂′ = c₁ * d₁
 ```
 
