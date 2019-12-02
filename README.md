@@ -24,7 +24,22 @@ Then load up the project within Julia:
 $ julia --project=ToyFHE
 ```
 
-If you do not have the correct versions of the dependencies installed, you may be asked to install them via `instantiate`.
+If you do not have the correct versions of the dependencies installed, you may be asked to install them via `instantiate`:
+```julia
+julia> using Pkg
+
+julia> Pkg.instantiate()
+```
+
+## Examples
+
+```julia
+julia> cd("ToyFHE/examples/encrypted_mnist")
+
+julia> include("train.jl")
+
+julia> include("infer.jl")
+```
 
 ## Documentation
 

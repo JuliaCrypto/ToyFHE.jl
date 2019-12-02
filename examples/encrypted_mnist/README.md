@@ -12,6 +12,14 @@ In this scenario, there is little reason to also encrypt the model weights, so
 we don't in this scenario. That more general scenario is however discussed in
 [JKLS19] and the interested reader is encouraged to read that paper.
 
+## Running the example
+
+```julia
+julia> include("train.jl")
+
+julia> include("infer.jl")
+```
+
 [JKLS19] Xiaoqian Jiang, Miran Kim, Kristin Lauter, Yongsoo Song
          "Secure Outsourced Matrix Computation and Application to Neural Networks"
          https://eprint.iacr.org/2018/1041.pdf
