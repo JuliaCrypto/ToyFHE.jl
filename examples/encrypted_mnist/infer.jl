@@ -109,7 +109,7 @@ q₅ = nextprime(q₄ + 2N, 1; interval=2N)
     ToyFHE.NegacyclicRing{CT, N}(ζ₂n)
 end
 
-ckks_params = ModulusRaised(CKKSParams(ℛ, ℛ, 0, 3.2))
+ckks_params = ModulusRaised(CKKSParams(ℛ, 0, 3.2))
 kp = keygen(ckks_params)
 
 Iᵢⱼ = public_preprocess(batch)
@@ -177,13 +177,14 @@ Cresult = naive_rectangular_matmul(gk, fq2_weights, Csqed2)
 Cresult = Cresult .+ OffsetArray(repeat(vcat(model.layers[4].b, zeros(54)), inner=64), 0:4095)
 
 plain_result = model(batch)
-enc_result = real.(decrypt_matrix(Cresult))
+enc_result = real.(decrypt_matrix(kp, Cresult))
 
+# N.B.: To see the images in your terminal, make sure to have `Images` and `TerminalExtensions` loaded,
+# and make sure your terminal supports inline images (currently iTerm2 on OS X).
 function compare_models(test_imgs, test_labels, plain_result, enc_result, plain_label, enc_label)
     print(" "^14)
     display(reduce(hcat, test_imgs[1:64]))
     println()
-    ground_truth = test_labels[idx]
     print("Ground truth:  ")
     print(join(test_labels[1:64], " "))
     println()

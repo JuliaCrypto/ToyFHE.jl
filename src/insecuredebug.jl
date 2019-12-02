@@ -11,4 +11,4 @@ Random.rand(rng::AbstractRNG, zs::ZeroSampler) = Zero()
 Base.:+(a::NTT.RingElement, b::Zero) = a
 Base.:+(a::Zero, b::NTT.RingElement) = a
 
-𝒩(params::CKKSParams) = ZeroSampler()
+𝒩(params::InsecureDebug) = ZeroSampler()
