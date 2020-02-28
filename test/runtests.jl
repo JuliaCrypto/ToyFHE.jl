@@ -33,3 +33,6 @@ include("ckks_rotate.jl")
 include("ckks_matmul.jl")
 
 include("ckks_modraise.jl")
+
+# test the examples
+include("examples.jl")
