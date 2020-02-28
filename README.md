@@ -16,12 +16,12 @@ versions, first clone this package to a location of your
 choice:
 
 ```
-$ git clone https://github.com/JuliaComputing/ToyFHE.jl ToyFHE
+$ git clone https://github.com/JuliaComputing/ToyFHE.jl ToyFHE.jl
 ```
 
 Then load up the project within Julia:
 ```
-$ julia --project=ToyFHE
+$ julia --project=ToyFHE.jl
 ```
 
 If you do not have the correct versions of the dependencies installed, you may be asked to install them via `instantiate`:
@@ -34,7 +34,7 @@ julia> Pkg.instantiate()
 ## Examples
 
 ```julia
-julia> cd("ToyFHE/examples/encrypted_mnist")
+julia> cd("ToyFHE.jl/examples/encrypted_mnist")
 
 julia> include("train.jl")
 
