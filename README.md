@@ -16,7 +16,7 @@ versions, first clone this package to a location of your
 choice:
 
 ```
-$ git clone https://github.com/JuliaComputing/ToyFHE.jl ToyFHE
+$ git clone https://github.com/JuliaCrypto/ToyFHE.jl ToyFHE
 ```
 
 Then load up the project within Julia:
@@ -94,15 +94,15 @@ No warranty (see LICENSE). Don't sue me.
 
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://juliacomputing.github.io/ToyFHE.jl/dev
+[docs-dev-url]: https://juliacrypto.github.io/ToyFHE.jl/dev
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: https://juliacomputing.github.io/ToyFHE.jl/stable
+[docs-stable-url]: https://juliacrypto.github.io/ToyFHE.jl/stable
 
-[travis-img]: https://travis-ci.org/JuliaComputing/ToyFHE.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/JuliaComputing/ToyFHE.jl
+[travis-img]: https://travis-ci.org/JuliaCrypto/ToyFHE.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/JuliaCrypto/ToyFHE.jl
 
-[codecov-img]: https://codecov.io/gh/JuliaComputing/ToyFHE.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/JuliaComputing/ToyFHE.jl
+[codecov-img]: https://codecov.io/gh/JuliaCrypto/ToyFHE.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/JuliaCrypto/ToyFHE.jl
 
-[issues-url]: https://github.com/JuliaComputing/ToyFHE.jl/issues
+[issues-url]: https://github.com/JuliaCrypto/ToyFHE.jl/issues
